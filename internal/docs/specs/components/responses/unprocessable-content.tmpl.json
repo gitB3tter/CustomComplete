@@ -1,0 +1,59 @@
+{
+    "description": "{{T `CommonErrorSummaryTitle`}}",
+    "headers": {
+        "Cache-Control": {
+            "$ref": "/docs/specs/components/headers/no-store"
+        }
+    },
+    "content": {
+        "application/problem+json": {
+            "schema": {
+                "$ref": "/docs/problems/validation"
+            },
+            "example": {
+                "type": "docs/problems/validation",
+                "title": "There is a problem",
+                "errors": [
+                    {
+                        "name": "file",
+                        "code": "invalid",
+                        "params": {
+                            "encoding": "utf-8"
+                        },
+                        "reason": "The selected file must be a UTF-8 plain text file"
+                    }
+                ]
+            }
+        },
+        "application/json": {
+            "schema": {
+                "$ref": "/docs/problems/validation"
+            },
+            "example": {
+                "type": "docs/problems/validation",
+                "title": "There is a problem",
+                "errors": [
+                    {
+                        "name": "file",
+                        "code": "invalid",
+                        "params": {
+                            "encoding": "utf-8"
+                        },
+                        "reason": "The selected file must be a UTF-8 plain text file"
+                    }
+                ]
+            }
+        },
+        "text/html": {
+            "schema": {
+                "type": "string"
+            }
+        },
+        "text/plain": {
+            "schema": {
+                "type": "string"
+            },
+            "example": "There is a problem\n- file: The selected file must be a UTF-8 plain text file [invalid encoding=utf-8]"
+        }
+    }
+}

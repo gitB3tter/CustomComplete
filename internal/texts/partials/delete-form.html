@@ -1,0 +1,21 @@
+{{define "text_delete_confirm"}}
+<aside data-type="warning">
+    <span aria-hidden="true">!</span>
+    <strong>
+        <span class="visually-hidden">{{T "Warning"}}: </span>
+        {{T "CommonWarningNoUndo"}}
+    </strong>
+</aside>
+<p>
+    {{T "TextDeleteFormWarningPermanent" .Name}}
+</p>
+{{end}}
+
+{{define "text_delete_button"}}
+<form method="post" action="/texts/{{.ID}}/delete" data-method="delete">
+    {{template "partials_hidden-etag" .ETagStrong}}
+    <button type="submit">
+        {{T "TextDeleteFormActionLabel"}}
+    </button>
+</form>
+{{end}}

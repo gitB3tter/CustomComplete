@@ -1,0 +1,53 @@
+@layer base {
+    :root {
+        /* system(-derived) colors */
+        --cl-accent-color: AccentColor;
+        --cl-accent-color-text: AccentColorText;
+        --cl-active-text: ActiveText;
+        --cl-button-face: ButtonFace;
+        --cl-button-text: ButtonText;
+        --cl-canvas: Canvas;
+        --cl-canvas-text: CanvasText;
+        --cl-field: Field;
+        --cl-field-text: FieldText;
+        --cl-gray-text: GrayText;
+        --cl-highlight: Highlight;
+        --cl-highlight-text: HighlightText;
+        --cl-link-text: LinkText;
+        --cl-mark: Mark;
+        --cl-mark-text: MarkText;
+        --cl-selected-item: SelectedItem;
+        --cl-selected-item-text: SelectedItemText;
+        --cl-visited-text: VisitedText;
+
+        /* chrome button border in dark mode is otherwise awfully similar to text (+native focus-)color */
+        --cl-button-border: color-mix(in oklab, ButtonBorder 80%, var(--cl-canvas) 20%);
+
+        /*custom colors*/
+        --cl-canvas-text-secondary: color-mix(in srgb, var(--cl-canvas-text) 70%, var(--cl-canvas) 30%);
+        /*steal gov.uk */
+        --cl-primary: #0f7a52;
+
+        /* hover, active */
+        --cl-button-face-hover: color-mix(in oklab, var(--cl-button-face) 85%, var(--cl-button-text) 15%);
+        --cl-button-face-active: color-mix(in oklab, var(--cl-button-face) 85%, var(--cl-canvas) 15%);
+
+        --cl-accent-color-hover: color-mix(in oklab, var(--cl-accent-color) 90%, var(--cl-accent-color-text) 10%);
+        --cl-accent-color-hover-active: color-mix(in oklab, var(--cl-accent-color) 90%, var(--cl-canvas) 10%);
+
+        --cl-anchor-text-hover: color-mix(in oklab, var(--cl-link-text) 80%, var(--cl-canvas-text) 20%);
+
+        /*steal gov.uk (warning button color) */
+        --cl-error: #ca3535;
+
+        --cl-error-text: var(--cl-error);
+        --cl-error-border: var(--cl-error);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --cl-error-text: color-mix(in oklab, var(--cl-error) 35%, var(--cl-canvas-text) 65%);
+            --cl-error-border: color-mix(in oklab, var(--cl-error) 65%, var(--cl-canvas-text) 35%);
+        }
+    }
+}

@@ -1,0 +1,68 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "{{T `ApplicationName`}}",
+  "version": "0.1.0",
+  "description": "{{T `HomeSubtitle`}}"
+ },
+ "paths": {
+  "/texts": {
+   "$ref": "/docs/specs/texts/collection#/paths/~1texts"
+  },
+  "/texts/new": {
+   "$ref": "/docs/specs/texts/collection#/paths/~1texts~1new"
+  },
+  "/texts/{textID}": {
+   "$ref": "/docs/specs/texts/item#/paths/~1texts~1{textID}"
+  },
+  "/texts/{textID}/status": {
+   "$ref": "/docs/specs/texts/item#/paths/~1texts~1{textID}~1status"
+  },
+  "/texts/{textID}/file": {
+   "$ref": "/docs/specs/texts/item#/paths/~1texts~1{textID}~1file"
+  },
+  "/suggestions": {
+   "parameters": [
+    {
+     "$ref": "/docs/specs/components/parameters/accept-language"
+    },
+    {
+     "name": "text",
+     "in": "query",
+     "required": false,
+     "schema": { "type": "string" }
+    },
+    {
+     "name": "textID",
+     "in": "query",
+     "required": false,
+     "schema": { "$ref": "/docs/specs/texts/item#/components/schemas/textID" }
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "schema": { "type": "integer", "minimum": 1, "default": 5 }
+    }
+   ],
+   "get": {
+    "summary": "{{T `NavigationSuggestions`}}",
+    "responses": {
+     "200": {
+      "description": "{{T `HomeSuggestionsDescription`}}",
+      "content": {
+       "text/html": { "schema": { "type": "string" } },
+       "application/linkset": { "schema": { "type": "string" } },
+       "application/linkset+json": { "schema": { "type": "object" } }
+      }
+     },
+     "304": { "description": "{{T `HTTPNotModified`}}" },
+     "406": { "$ref": "/docs/specs/components/responses/not-acceptable" },
+     "409": { "$ref": "/docs/specs/components/responses/unprocessable-content" },
+     "422": { "$ref": "/docs/specs/components/responses/unprocessable-content" },
+     "500": { "$ref": "/docs/specs/components/responses/internal-error" }
+    }
+   }
+  }
+ }
+}

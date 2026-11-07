@@ -1,0 +1,150 @@
+<!-- html-validate-disable attr-case-->
+<!-- html-validate-disable attr-spacing-->
+<!-- html-validate-disable unique-landmark-->
+<!-- html-validate-disable no-dup-id-->
+
+<!-- requires: ID catalog.DocumentID, FileName catalog.DocumentFilename, FileSizeFmt string, optional: WordCountFmt string-->
+{{define "texts_attachement"}}
+<div class="attachment">
+    <a href="/texts/{{.ID}}/file" aria-hidden="true" tabindex="-1" type="text/plain; charset=utf-8">
+        {{template "partials_icon-attachment-plain-text"}}
+    </a>
+    <div>
+        <p>
+            <strong>
+                <a href="/texts/{{.ID}}/file" type="text/plain">
+                    {{.FileName}}
+                </a>
+            </strong>
+        </p>
+        <p>
+            {{T "CommonAttachementMetaText"}}, {{.FileSizeFmt}}{{if .WordCountFmt}}, {{T "CommonCountWordsOther"
+            .WordCountFmt}} {{end}}
+        </p>
+        <p>
+            <a href="/texts/{{.ID}}/file?download=1" type="text/plain; charset=utf-8" download="{{.FileName}}.txt">
+                {{T "CommonAttachementDownload"}}
+            </a>
+        </p>
+    </div>
+</div>
+{{end}}
+
+
+{{define "texts_errors"}}
+{{with .name}}
+<li>
+    <a href="#name">{{.}}</a>
+</li>
+{{end}}
+{{with .source}}
+<li>
+    <a href="#source">{{.}}</a>
+</li>
+{{end}}
+{{with .text}}
+<li>
+    <a href="#text">{{.}}</a>
+</li>
+{{end}}
+{{with .file}}
+<li>
+    <a href="#file">{{.}}</a>
+</li>
+{{end}}
+{{end}}
+
+
+
+{{define "texts_name"}}
+<div class="form-group">
+    <label for="name">
+        {{T "TextFieldName"}}
+    </label>
+    <p class="hint" id="name-hint">
+        {{T "TextFieldNameHint" .NameMaxCodePoints}}
+    </p>
+    <div id="name-error">
+        <p class="error-message" data-default-message='{{T "TextFieldNameRequired"}}'>
+            <span class="visually-hidden">{{T "CommonErrorMessagePrefixSR"}}:</span>
+            {{with .Errors.name}}
+            {{.}}
+            {{else}}
+            {{T "TextFieldNameRequired"}}
+            {{end}}
+        </p>
+    </div>
+    <!-- html-validate-disable no-dup-attr-->
+    <input type="text" style="--chars:50" name="name" {{with .Name}}value="{{.}}" {{end}}
+        data-max-code-points="{{.NameMaxCodePoints}}" id="name" required data-rules="notBlank"
+        data-max-code-points-error="{{T `TextFieldNameMaxCodePoints`}}" aria-describedby="name-error name-hint" {{if
+        .Errors.name}}aria-invalid="true" {{end}} autocomplete="on">
+</div>
+{{end}}
+
+{{define "texts_text"}}
+<div>
+    <div class="form-group">
+        <label for="text">
+            {{T "TextFieldText"}}
+        </label>
+        <p class="hint" id="text-hint">
+            {{T "TextFieldTextHint" .WordMaxFmt}}
+        </p>
+        <div id="text-error">
+            <p class="error-message" data-default-message='{{T "TextFieldTextMissing"}}'>
+                <span class="visually-hidden">{{T "CommonErrorMessagePrefixSR"}}:</span>
+                {{with .Errors.text}}
+                {{.}}
+                {{else}}
+                {{T "TextFieldTextMissing"}}
+                {{end}}
+            </p>
+        </div>
+        <!-- if called 'one' go html/template would treat as js => escape string quotes-->
+        <word-count-advisory eins="{{T `CommonCountWordsOne`}}" other="{{T `CommonCountWordsOther`}}"
+            over="{{T `TextFieldTextWordsOver`}}" limit="{{.WordMax}}">
+            <!-- html-validate-disable no-dup-attr-->
+            <textarea name="text" spellcheck="false" aria-required="true" data-minwords="2"
+                data-minwords-error="{{T `TextFieldTextMinWords` .WordMin}}" id="text"
+                aria-describedby="text-error text-hint text-info" {{if .Errors.text}}aria-invalid="true" {{end}}
+                autocomplete="on">{{.Text}}</textarea>
+            <!-- html-validate-enable no-dup-attr-->
+            <div id="text-info">
+                <div>
+                    {{T "TextFieldTextInfo" .FilesizeLimitMB}}
+                </div>
+            </div>
+            <div aria-hidden="true"></div>
+            <div class="visually-hidden" aria-live="polite"></div>
+        </word-count-advisory>
+    </div>
+</div>
+{{end}}
+
+{{define "texts_file"}}
+<div>
+    <div class="form-group">
+        <label for="file">
+            {{T "TextFieldFile"}}
+        </label>
+        <p class="hint" id="file-hint">
+            {{T "TextFieldFileHint" .FilesizeLimitMB}}
+        </p>
+        <div id="file-error">
+            <p class="error-message" data-default-message='{{T "TextFileSelect"}}'>
+                <span class="visually-hidden">{{T "CommonErrorMessagePrefixSR"}}:</span>
+                {{with .Errors.file}}
+                {{.}}
+                {{else}}
+                {{T "TextFieldFileMissing"}}
+                {{end}}
+            </p>
+        </div>
+        <input type="file" name="file" id="file" accept=".txt, text/plain" data-max-bytes="{{.FilesizeLimit}}"
+            data-max-bytes-error="{{T `TextFieldFileMaxBytes` .FilesizeLimitMB}}"
+            data-not-txt-error="{{T `TextFieldFileInvalidTXT`}}" aria-required="true" data-encoding="utf-8"
+            aria-describedby="file-error file-hint" {{if .Errors.file}}aria-invalid="true" {{end}}>
+    </div>
+</div>
+{{end}}

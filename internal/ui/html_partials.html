@@ -1,0 +1,91 @@
+<!-- html-validate-disable attr-case -->
+
+<!-- banners -->
+
+{{define "partials_banner-notification-start"}}
+<div class="banner" tabindex="-1">
+    <div>
+        <h2>
+            {{T "CommonNotificationInfo"}}
+        </h2>
+    </div>
+    {{end}}
+    {{define "partials_banner-notification-end"}}
+</div>
+{{end}}
+
+{{define "partials_banner-success"}}
+<div class="banner" data-type="success" tabindex="-1">
+    <div>
+        <h2>
+            {{T "CommonNotificationSuccess"}}
+        </h2>
+    </div>
+    <p>
+        {{T .}}
+    </p>
+</div>
+{{end}}
+
+
+{{define "partials_banner-success-template"}}
+<template data-success>
+    {{template "partials_banner-success" .}}
+</template>
+{{end}}
+
+{{define "partials_banner-error-start"}}
+<div class="banner" data-type="error" tabindex="-1">
+    <div>
+        <h2>
+            {{T "CommonErrorService"}}
+        </h2>
+    </div>
+    {{end}}
+    {{define "partials_banner-error-end"}}
+</div>
+{{end}}
+
+{{define "partials_error-summary-start"}}
+<section id="error-summary" aria-labelledby="error-heading" tabindex="-1" {{if .}}hidden{{end}}>
+    <h2 id="error-heading">{{T "CommonErrorSummaryTitle"}}</h2>
+    <ul>
+        {{end}}
+        {{define "partials_error-summary-end"}}
+    </ul>
+</section>
+{{end}}
+
+
+{{define "partials_hidden-etag"}}
+<input type="hidden" name="If-Match" value="{{.}}">
+{{end}}
+
+<!-- icons -->
+
+
+{{define "partials_icon-attachment-plain-text"}}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 35" aria-hidden="true" stroke="#ffffff">
+    <rect x="4" y="5" width="21" height="29" />
+    <rect x="2" y="3" width="21" height="29" />
+    <rect x="0" y="1" width="21" height="29" />
+    <line x1="3" y1="7" x2="17" y2="7" />
+    <line x1="3" y1="12" x2="17" y2="12" />
+    <line x1="3" y1="17" x2="13" y2="17" />
+    <line x1="3" y1="22" x2="17" y2="22" />
+</svg>
+{{end}}
+
+
+<!-- Links -->
+
+{{define "partials_link-body"}}
+<a href="{{.Target}}" {{if not .Type.IsZero}} type="{{.Type}}" {{end}} rel="{{.Rel}}">{{.Title}}</a>
+{{end}}
+
+{{define "partials_link-head"}}
+{{if .Rel}}
+<!-- html-validate-disable no-dup-attr -->
+<link href="{{.Target}}" {{if not .Type.IsZero}} type="{{.Type}}" {{end}} rel="{{.Rel}}" {{if .Lang}} hreflang="{{.Lang}}" {{end}} {{if .Title}} title="{{.Title}}" {{end}}>
+{{end}}
+{{end}}

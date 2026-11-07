@@ -1,0 +1,35 @@
+{{define "text_status-live"}}
+<text-status mode="sse" status="{{.Status.Status}}">
+    <strong data-key="message">{{.Status.Message}}</strong>
+    <div class="action-bar">
+        <a href="" hidden>{{T "TextItemRefreshForWordcount"}}</a>
+        <a href="/texts/{{.ID}}/status" rel="status">{{T "TextItemSeeStatus"}}</a>
+        <a href="/suggestions?textID={{.ID}}" rel="search" hidden>{{T "TextItemGetSuggestions"}}</a>
+    </div>
+    <div data-live hidden>
+        <p data-key="stage"></p>
+        <div>
+            <progress max="100"></progress>
+            <span data-key="progress"></span>
+        </div>
+        <span class="visually-hidden" aria-live="polite"></span>
+    </div>
+</text-status>
+{{end}}
+
+{{define "text_status-static"}}
+<span class="tag" data-type="{{.Status.Status}}">{{.Status.Message}}</span>
+{{if eq .Status.Status "completed"}}
+<div class="action-bar">
+    <a href="/suggestions?textID={{.ID}}" rel="search">{{T "TextItemGetSuggestions"}}</a>
+</div>
+{{end}}
+{{end}}
+
+{{define "text_status"}}
+{{if or (eq .Status.Status "pending") (eq .Status.Status "processing")}}
+{{template "text_status-live" .}}
+{{else}}
+{{template "text_status-static" .}}
+{{end}}
+{{end}}

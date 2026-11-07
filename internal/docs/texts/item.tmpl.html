@@ -1,0 +1,8 @@
+{{define "body"}}
+<main>
+    <h1>{{.Base.Title}}</h1>
+    <h2>{{T `DocsFiles`}}</h2>
+    {{template "docs_attachement" .Schema}}
+    {{template "docs_attachement" .Spec}}
+</main>
+{{end}}

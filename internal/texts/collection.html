@@ -1,0 +1,22 @@
+{{define "body"}}
+<main>
+    {{with .Flash}}
+    {{template "partials_banner-success" .}}
+    {{end}}
+    <h1 id="collection-heading">
+        {{T "NavigationTextCollection"}}
+    </h1>
+    <nav aria-labelledby="collection-heading">
+        {{if .CreateForm.Target}}
+        {{template "partials_link-body" .CreateForm}}
+        {{end}}
+        <ul>
+            {{range .Items}}
+            <li>
+                {{template "partials_link-body" .}}
+            </li>
+            {{end}}
+        </ul>
+    </nav>
+</main>
+{{end}}

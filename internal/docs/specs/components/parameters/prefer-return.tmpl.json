@@ -1,0 +1,14 @@
+{
+    "name": "Prefer",
+    "in": "header",
+    "required": false,
+    "description": "{{T `CommonActionChooseReturn`}}",
+    "schema": {
+        "type": "string",
+        "enum": [
+            "return=representation",
+            "return=minimal"
+        ],
+        "default": "return=representation"
+    }
+}

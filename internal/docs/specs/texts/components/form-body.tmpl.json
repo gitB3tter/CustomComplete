@@ -1,0 +1,58 @@
+{
+  "required": true,
+  "content": {
+    "multipart/form-data": {
+      "schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "$ref": "/docs/schemas/texts/item#/properties/name"
+          },
+          "text": {
+            "title": "{{T `TextFieldText`}}",
+            "description": "{{T `TextFieldTextHint` .WordMaxFmt}} {{T `TextFieldTextInfo` .FilesizeLimitMB}}",
+            "$ref": "/docs/specs/texts/item#/components/schemas/file"
+          },
+          "file": {
+            "title": "{{T `TextFieldFile`}}",
+            "description": "{{T `TextFieldFileHint` .FilesizeLimitMB}}",
+            "contentMediaType": "text/plain; charset=utf-8",
+            "$ref": "/docs/specs/texts/item#/components/schemas/file"
+          }
+        },
+        "oneOf": [
+          {
+            "title": "{{T `TextCreateFormChoiceText`}}",
+            "required": [
+              "name",
+              "text"
+            ],
+            "not": {
+              "required": [
+                "file"
+              ]
+            }
+          },
+          {
+            "title": "{{T `TextCreateFormChoiceFile`}}",
+            "required": [
+              "name",
+              "file"
+            ],
+            "not": {
+              "required": [
+                "text"
+              ]
+            }
+          }
+        ]
+      },
+      "encoding": {
+        "file": {
+          "contentType": "text/plain; charset=utf-8"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{{define "body"}}
+<a href="/texts/{{.ID}}" rel="up">
+    Back
+</a>
+<main>
+    <h1>
+        {{T "TextDeleteFormTitle" .Name}}
+    </h1>
+    {{template "text_delete_confirm" .}}
+    {{template "text_delete_button" .}}
+</main>
+{{end}}
+
+{{define "head-elements"}}
+<link rel="up" href="/texts/{{.ID}}">
+{{end}}

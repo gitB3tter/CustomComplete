@@ -1,0 +1,69 @@
+{{define "body"}}
+{{if .NoTexts}}
+{{template "partials_banner-notification-start"}}
+<p>
+    {{T "SuggestionsNoTexts"}}.
+</p>
+<a href="/texts/new">{{T "NavigationTextCreateForm"}}</a>
+{{template "partials_banner-notification-end"}}
+{{end}}
+{{if .InternalError}}
+{{template "partials_banner-error-start"}}
+<p>
+    {{T "SuggestionsError"}}.
+    {{with .LinkBack}}
+    {{template "partials_link-body" .}}
+    {{end}}
+</p>
+{{template "partials_banner-error-end"}}
+{{end}}
+{{template "partials_error-summary-start" not .Error}}
+<li>
+    {{.Error}}.
+    {{with .LinkBack}}
+    {{template "partials_link-body" .}}
+    {{end}}
+</li>
+{{template "partials_error-summary-end"}}
+<h1>
+    {{ .Base.Title}}
+</h1>
+<suggestions-enhance>
+    <form method="get">
+        {{if .FilterTextID}}
+        <input type="hidden" name="textID" value="{{.FilterTextID}}">
+        {{end}}
+        <input type="hidden" name="limit" value="{{.Limit}}">
+        <div class="form-group">
+            <label for="text">
+                {{T "TextFieldText"}}
+            </label>
+            <textarea name="text" spellcheck="false" aria-required="true" id="text">{{.Text}}</textarea>
+        </div>
+        <div class="action-bar">
+            <button type="submit">
+                {{T "SuggestionsAction"}}
+            </button>
+        </div>
+        <!-- html-validate-disable attr-case-->
+        <fieldset {{if not .Suggestions}} hidden {{end}}>
+            <legend>
+                {{T "NavigationSuggestions"}}
+            </legend>
+            <div class="action-bar">
+                {{range .Suggestions}}
+                <button name="next" value="{{.}}" type="submit">
+                    {{.}}
+                </button>
+                {{end}}
+            </div>
+        </fieldset>
+
+        <div class="action-bar">
+            <button type="submit" formaction="/texts/new">
+                {{T "NavigationTextCreateForm"}}
+            </button>
+        </div>
+    </form>
+</suggestions-enhance>
+{{end}}

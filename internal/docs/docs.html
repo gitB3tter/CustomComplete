@@ -1,0 +1,24 @@
+{{define "docs_attachement"}}
+<div class="attachment">
+    <a href="{{.Path}}" aria-hidden="true" tabindex="-1" type="{{.Type}}">
+        {{template "partials_icon-attachment-plain-text"}}
+    </a>
+    <div>
+        <p>
+            <strong>
+                <a href="{{.Path}}" type="{{.Type}}">
+                    {{.Filename}}
+                </a>
+            </strong>
+        </p>
+        <p>
+            {{T "CommonAttachementMetaJSON"}}{{if .FileSizeFmt}}, {{.FileSizeFmt}}{{end}}
+        </p>
+        <p>
+            <a href="{{.Path}}" type="{{.Type}}" download="{{.Filename}}.json">
+                {{T "CommonAttachementDownload"}}
+            </a>
+        </p>
+    </div>
+</div>
+{{end}}

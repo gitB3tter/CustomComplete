@@ -1,0 +1,9 @@
+{
+    "schema": {
+        "type": "string",
+        "examples": [
+            "W/\"ae4bd89ce2df0404a357fdc3f43ccc28\""
+        ],
+        "pattern": "^W/\"[a-f0-9]{32}\"$"
+    }
+}

@@ -1,0 +1,13 @@
+{
+  "description": "{{T `CommonActionChooseReturnApplied`}}",
+  "schema": {
+    "type": "string",
+    "enum": [
+      "return=representation",
+      "return=minimal"
+    ],
+    "examples": [
+      "return=representation"
+    ]
+  }
+}

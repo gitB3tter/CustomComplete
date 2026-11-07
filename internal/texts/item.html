@@ -1,0 +1,53 @@
+{{define "body"}}
+<main>
+    {{template "partials_error-summary-start" not .ErrorPrecondition}}
+    {{with .ErrorPrecondition}}
+    <!-- html-validate-disable element-permitted-parent-->
+    <li>
+        {{.CustomMessage (T "TextDeletePrecondition") (T "TextDeleteNoPrecondition")}}
+    </li>
+    <!-- html-validate-enable element-permitted-parent-->
+    {{end}}
+    {{template "partials_error-summary-end"}}
+    {{if .Flash}}
+    {{template "partials_banner-success" .Flash}}
+    {{end}}
+    <h1>
+        {{.Name}}
+    </h1>
+    {{template "text_status" .}}
+    <section aria-labelledby="file-heading">
+        <h2 id="file-heading">
+            {{T "File"}}
+        </h2>
+        {{template "texts_attachement" . }}
+    </section>
+    <nav aria-labelledby="actions-heading">
+        <h2 id="actions-heading">
+            {{T "TextItemManage"}}
+        </h2>
+        <div class="action-bar">
+            <a href="/texts/{{.ID}}/edit" rel="edit-form">{{T "Edit"}}</a>
+            <a href="/texts/{{.ID}}/delete" rel="{{relURL `delete-form`}}" class="no-js">{{T "Delete"}}</a>
+            <button type="button" class="js"
+                onclick="if(document.getElementById('delete-form'));event.preventDefault(),document.getElementById('delete-form')?.showModal()">
+                {{T "Delete"}}
+            </button>
+            <dialog id="delete-form">
+                <h1 tabindex="-1" autofocus>
+                    {{T "TextDeleteFormTitle" .Name}}
+                </h1>
+                {{template "text_delete_confirm" .}}
+                <div class="action-bar">
+                    {{template "text_delete_button" .}}
+                    <form method="dialog">
+                        <button type="submit">
+                            {{T "TextItemDialogDeleteKeep"}}
+                        </button>
+                    </form>
+                </div>
+            </dialog>
+        </div>
+    </nav>
+</main>
+{{end}}

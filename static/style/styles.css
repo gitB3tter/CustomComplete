@@ -1,0 +1,894 @@
+@layer base, layout, components, utilities;
+
+@layer base {
+
+    :root {
+        --touch-target-width: 44px;
+        --touch-target-height: 44px;
+        --padding-table: 0.3em .2em;
+        --border-color-table-cells: color-mix(in oklab, var(--cl-canvas-text) 20%, var(--cl-canvas) 80%);
+        --border-color-subtle: color-mix(in oklab, var(--cl-canvas-text) 10%, var(--cl-canvas) 90%);
+
+        --unit-distance: 0.25rem;
+
+        --formcontrol-border-width: 2px;
+
+        --gap: var(--unit-distance);
+        --gap-2: calc(var(--unit-distance) * 2);
+        --gap-3: calc(var(--unit-distance) * 3);
+        --gap-4: calc(var(--unit-distance) * 4);
+        --gap-6: calc(var(--unit-distance) * 6);
+
+        color-scheme: light dark;
+        color: var(--cl-canvas-text);
+        background-color: var(--cl-canvas);
+        font-family: system-ui, sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    @view-transition {
+        navigation: auto;
+    }
+
+    /* TYPOGRAHPY */
+
+    :link {
+        color: var(--cl-link-text);
+    }
+
+    :visited {
+        color: var(--cl-visited-text);
+    }
+
+    :any-link:active {
+        color: var(--cl-active-text);
+    }
+
+    mark {
+        background-color: var(--cl-mark);
+        color: var(--cl-mark-text);
+    }
+
+    /* INTERACTIVE ELEMENTS */
+
+    /* general */
+
+    :where(select, input, button, a),
+    ::file-selector-button {
+        max-width: 100%;
+    }
+
+    :where(textarea, select, input, button),
+    /*standalone link*/
+    body > a,
+    li > a:only-child,
+    :where(nav, header, footer, [role="navigation"]) > a,
+    a[role="button"],
+    a:where(:not(p a, li a, blockquote a, dt a, dd a, figcaption a, label a)),
+    .action-bar a,
+    .attachment a,
+    [data-menubutton] > summary,
+    ::file-selector-button {
+        min-height: var(--touch-target-height);
+        min-width: min(var(--touch-target-width), 100%);
+    }
+
+    :where(textarea, select, input),
+    [data-menubutton] > summary,
+    ::file-selector-button {
+        border: var(--formcontrol-border-width) solid var(--cl-canvas-text);
+    }
+
+    /* anchors */
+
+    a {
+        text-decoration-color: color-mix(in oklab, currentColor 70%, transparent);
+    }
+
+    /* standalone */
+    body > a,
+    li > a:only-child,
+    :where(nav, header, footer, [role="navigation"]) > a,
+    a[role="button"],
+    a:where(:not(p a, li a, blockquote a, dt a, dd a, figcaption a, label a)),
+    .action-bar a,
+    .attachment a {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    a:hover {
+        color: var(--cl-anchor-text-hover);
+        text-decoration-color: currentColor;
+        text-decoration-thickness: 0.15em;
+    }
+
+
+    /* textual */
+
+
+    :where(textarea, select,
+        input:not([type="file"],
+            [type="checkbox"],
+            [type="radio"],
+            [type="range"],
+            [type="color"],
+            [type="button"],
+            [type="reset"],
+            [type="submit"],
+            [type="hidden"])) {
+        background-color: var(--cl-field);
+        color: var(--cl-field-text);
+        font-size: 1.4rem;
+        padding: var(--gap);
+        width: 100%;
+    }
+
+    :where(input:not([type="file"],
+            [type="checkbox"],
+            [type="radio"],
+            [type="range"],
+            [type="color"],
+            [type="button"],
+            [type="reset"],
+            [type="submit"],
+            [type="hidden"])) {
+        --chars: 20;
+        max-width: calc(var(--chars) * 1ch);
+    }
+
+
+    input[type="file"] {
+        border-color: transparent;
+        border-style: solid;
+        border-width: 2px;
+    }
+
+    input[type="number"] {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* button(i)s(h) */
+    :where(button, input:is([type="color"], [type="reset"], [type="button"], [type="submit"])),
+    [data-menubutton] > summary,
+    ::file-selector-button {
+        display: inline-block;
+        position: relative;
+        background-color: var(--cl-button-face);
+        color: var(--cl-button-text);
+        box-shadow: 0 2px 0 color-mix(in oklch, var(--cl-button-face) 70%, var(--cl-canvas-text));
+        text-align: center;
+        vertical-align: baseline;
+        font-size: 1.2rem;
+        line-height: 1;
+        padding-block-start: calc(var(--gap-2) + 0.05rem);
+        padding-block-end: calc(var(--gap-2) - 0.05rem);
+        padding-inline: var(--gap-4);
+        border: var(--formcontrol-border-width) solid transparent;
+    }
+
+    ::file-selector-button {
+        padding-block-start: calc(var(--gap-2) + 0.05rem - 2px);
+        margin-bottom: 2px;
+    }
+
+
+    :where(button, select):hover,
+    [data-menubutton] > summary:hover,
+    ::file-selector-button:hover {
+        background-color: var(--cl-button-face-hover);
+    }
+
+    button:is(:active, [aria-haspopup="menu"][aria-expanded="true"], [aria-pressed="true"]),
+    details[data-menubutton] > summary:active,
+    details[data-menubutton][open] > summary,
+    ::file-selector-button:active {
+        background-color: var(--cl-button-face-active);
+    }
+
+
+    button:not([aria-haspopup], [aria-expanded]):active {
+        top: 2px;
+    }
+
+    button:not([aria-haspopup], [aria-expanded]):active:focus,
+    input[type="file"]:active::file-selector-button:focus {
+        border-color: var(--cl-accent-color);
+        box-shadow: inset 0 0 0 1px var(--cl-accent-color);
+        outline: 3px solid transparent;
+    }
+
+    @media (prefers-color-scheme: dark) {
+
+        :where(button, input:is([type="color"], [type="reset"], [type="button"], [type="submit"])),
+        [data-menubutton] > summary,
+        ::file-selector-button {
+            border-width: 0;
+            padding-block-end: calc(var(--gap-2) + 0.05rem + 2px);
+            padding-block-start: calc(var(--gap-2) - 0.05rem + 2px);
+            padding-inline: calc(var(--gap-4) + 2px);
+            box-shadow: inset 0 2px 0 color-mix(in oklch, var(--cl-button-face) 70%, var(--cl-canvas-text));
+        }
+
+        button:not([aria-haspopup], [aria-expanded]):active:focus,
+        input[type="file"]:active::file-selector-button:focus {
+            border-width: 2px;
+            padding-block-end: calc(var(--gap-2) + 0.05rem);
+            padding-block-start: calc(var(--gap-2) - 0.05rem);
+            padding-inline: var(--gap-4);
+            box-shadow: inset 0 0 0 -1px var(--cl-accent-color);
+        }
+    }
+
+    /* radio */
+
+
+    .form-group:has(input[type="radio"]) {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        position: relative;
+    }
+
+
+    input[type="radio"] {
+        appearance: none;
+        border-radius: 50%;
+        background-color: var(--cl-button-face);
+        display: grid;
+        place-content: center;
+        margin-inline: 0;
+    }
+
+    input[type="radio"]:checked::before {
+        content: "";
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: var(--cl-field-text);
+    }
+
+    /* OVERLAYS */
+
+    dialog,
+    [popover] {
+        background-color: var(--cl-canvas);
+        color: var(--cl-canvas-text);
+    }
+
+    dialog::backdrop {
+        background-color: color-mix(in srgb, CanvasText 45%, transparent);
+        backdrop-filter: blur(2px);
+    }
+
+    /* DISABLED STATE */
+
+    :where(button, input, textarea, select, option, optgroup):disabled,
+    input:disabled::file-selector-button,
+    select:disabled > button,
+    input:where([type=date], [type=time], [type=datetime-local]):read-only {
+        color: var(--cl-gray-text);
+    }
+
+}
+
+@layer layout {
+
+    /* MACRO STRUCTURE */
+    body {
+        max-width: 90rem;
+        margin-inline: auto;
+        padding-inline: 1rem;
+    }
+
+    header {
+        width: 100%;
+        margin-block-end: 3rem;
+        margin-inline: auto;
+    }
+
+    fieldset {
+        margin-inline: 0;
+        padding-inline: 0;
+        border: none;
+        min-inline-size: 0;
+    }
+
+    main,
+    form {
+        max-width: 40rem;
+    }
+
+    dialog > :first-child {
+        margin-block-start: 0;
+    }
+
+
+    /* REUSABLE PRIMITIVES */
+
+    .stacked {
+        display: flex;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        row-gap: 3px;
+        min-width: 0;
+        width: fit-content;
+        max-width: 100%;
+    }
+
+    .stacked > .inline-space-between {
+        width: 0;
+        min-width: 100%;
+    }
+
+    .inline-space-between {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: end;
+        justify-content: space-between;
+        column-gap: 2ch;
+        width: 100%;
+        container-name: inline-space-between;
+        container-type: inline-size;
+    }
+
+    .inline-start {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: start;
+        width: 100%;
+    }
+
+    .action-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: var(--gap-4);
+        margin-block-start: var(--gap-6);
+    }
+
+    /* nun-button-stuff in action-bar has button dimensions */
+    .action-bar > :not(form, button),
+    .action-bar > form > :not(button) {
+        font-size: 1.2rem;
+        line-height: 1;
+        padding-block-start: calc(var(--gap-2) + 0.05rem);
+        padding-block-end: calc(var(--gap-2) - 0.05rem);
+        padding-inline: var(--gap-4);
+        border: var(--formcontrol-border-width) solid transparent;
+    }
+
+}
+
+@layer components {
+
+    /* custom elements */
+    conditional-reveal {
+        display: contents;
+    }
+
+    word-count-advisory {
+        display: contents;
+    }
+
+
+    label,
+    legend {
+        font-weight: bold;
+    }
+
+    /* primary button */
+
+    form:where(:not([method="dialog"])) button:is([type="submit"], :not([type])):not([form], [data-type="warning"]):only-of-type {
+        --cl-button-face: var(--cl-primary);
+        --cl-button-text: var(--cl-canvas);
+        --cl-button-face-hover: color-mix(in oklab, var(--cl-button-face) 85%, var(--cl-button-text) 15%);
+        --cl-button-face-active: color-mix(in oklab, var(--cl-button-face) 85%, var(--cl-canvas) 15%);
+        box-shadow: 0 2px 0 color-mix(in oklch, var(--cl-primary) 70%, var(--cl-canvas-text));
+    }
+
+
+    form:where(:not([method="dialog"])) button:is([type="submit"], :not([type])):not([form]):only-of-type:active {
+        box-shadow: inset 0 0 0 1px var(--cl-accent-color);
+    }
+
+    /* delete and warning buttons */
+    form[data-method="delete"] button:is([type="submit"], :not([type])):not([form]):only-of-type,
+    button[data-type="warning"] {
+        --cl-button-face: var(--cl-error);
+        --cl-button-text: var(--cl-canvas);
+        --cl-button-face-hover: color-mix(in oklab, var(--cl-button-face) 85%, var(--cl-button-text) 15%);
+        --cl-button-face-active: color-mix(in oklab, var(--cl-button-face) 85%, var(--cl-canvas) 15%);
+        box-shadow: 0 2px 0 color-mix(in oklch, var(--cl-error) 70%, var(--cl-canvas-text));
+    }
+
+    @media (prefers-color-scheme: dark) {
+        form:where(:not([method="dialog"])) button:is([type="submit"], :not([type])):not([form], [data-type="warning"]):only-of-type {
+            --cl-button-text: var(--cl-canvas-text);
+            box-shadow: inset 0 2px 0 color-mix(in oklch, var(--cl-primary) 70%, white);
+        }
+
+        form[data-method="delete"] button:is([type="submit"], :not([type])):not([form]):only-of-type,
+        button[data-type="warning"] {
+            --cl-button-text: var(--cl-canvas-text);
+            box-shadow: inset 0 2px 0 color-mix(in oklch, var(--cl-error) 70%, white);
+        }
+
+        form:where(:not([method="dialog"])) button:is([type="submit"], :not([type])):not([form]):only-of-type:active {
+            box-shadow: inset 0 0 0 1px var(--cl-accent-color);
+        }
+    }
+
+    /* banner */
+
+    header #application-title {
+        font-size: 1.5rem;
+    }
+
+    header nav ul {
+        margin-block-start: 0;
+        margin-block-end: 0;
+        padding-inline-start: .5em;
+
+        list-style: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+
+    header nav a {
+        border-bottom: 3px solid transparent;
+        text-decoration: none;
+    }
+
+    header nav a:where([aria-current="page"]) {
+        border-bottom: 3px solid currentColor;
+        font-weight: bold;
+        color: var(--cl-canvas-text);
+    }
+
+    header nav a:where(:hover, :focus-visible) {
+        border-bottom: 3px solid currentColor;
+    }
+
+
+    /* breadcrumb */
+
+    nav[data-type="breadcrumb"] > ol {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: var(--gap);
+    }
+
+    nav[data-type="breadcrumb"] li {
+        gap: var(--gap-2);
+        display: inline-flex;
+        align-items: center;
+    }
+
+    nav[data-type="breadcrumb"] a {
+        color: var(--cl-canvas-text);
+    }
+
+    nav[data-type="breadcrumb"] li:not(:first-of-type)::before {
+        content: "";
+        display: inline-block;
+        box-sizing: border-box;
+
+        width: 0.45em;
+        height: 0.45em;
+        aspect-ratio: 1;
+
+        border-style: solid;
+        border-width: 0 1px 1px 0;
+        border-color: var(--cl-canvas-text-secondary);
+
+        transform: rotate(-45deg);
+
+        translate: 0.05em 0;
+    }
+
+    /*backlink*/
+
+    body > a:first-of-type:is([rel~="up"], [rel~="collection"]) {
+        gap: 0.2em;
+        color: var(--cl-canvas-text);
+    }
+
+    body > a:first-of-type:is([rel~="up"], [rel~="collection"])::before {
+        content: "";
+        display: inline-block;
+        box-sizing: border-box;
+
+        width: 0.45em;
+        aspect-ratio: 1;
+
+        border-style: solid;
+        border-width: 1px 0 0 1px;
+        border-color: var(--cl-canvas-text-secondary);
+
+        transform: rotate(-45deg);
+
+        translate: 0.05em 0;
+    }
+
+
+
+    /* notification/warning/error/co-boxes */
+
+    /* general */
+    #error-summary,
+    .banner {
+        border-width: 5px;
+        border-style: solid;
+        border-color: var(--color);
+        margin-block-start: var(--gap-6);
+    }
+
+    :is(#error-summary, .banner) > * {
+        padding-inline: 1rem;
+    }
+
+    #error-summary {
+        --color: var(--cl-error-border)
+    }
+
+    .banner[data-type="error"] {
+        --color: var(--cl-error);
+    }
+
+    /* notification banner */
+
+    .banner {
+        --color: var(--cl-accent-color)
+    }
+
+    .banner > * {
+        padding-inline-start: var(--gap-4);
+    }
+
+    .banner > div:first-child {
+        color: var(--cl-canvas);
+        margin-block-end: var(--gap);
+        background-color: var(--color);
+    }
+
+    .banner > div:first-child > h2 {
+        margin-block-start: 0;
+        padding-block-end: var(--gap);
+    }
+
+    .banner[data-type="success"] {
+        --color: var(--cl-primary);
+    }
+
+    .banner[data-type="success"] > div:first-child {
+        background-color: var(--cl-primary);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .banner > div:first-child {
+            color: var(--cl-canvas-text)
+        }
+    }
+
+    #error-summary > ul {
+        list-style-type: none;
+    }
+
+    #error-summary > ul > li + li {
+        margin-top: var(--gap-2);
+    }
+
+    #error-summary > ul > li > a {
+        color: var(--cl-error-text);
+        font-weight: bold;
+    }
+
+    /* warning message */
+    aside[data-type="warning"] {
+        display: flex;
+        align-items: center;
+        gap: var(--gap-2);
+    }
+
+    aside[data-type="warning"] [aria-hidden="true"] {
+        display: inline-grid;
+        place-items: center;
+        width: 2.0rem;
+        aspect-ratio: 1;
+        flex-shrink: 0;
+        background: var(--cl-canvas-text);
+        color: var(--cl-canvas);
+        border-radius: 50%;
+        font-weight: bold;
+        font-size: 1.5rem;
+        user-select: none;
+        border-width: 3px;
+        line-height: 1rem;
+    }
+
+    /* favico */
+    svg.in-text {
+        height: 1em;
+        aspect-ratio: 1/1;
+    }
+
+
+    /* forms */
+
+    :is(.form-group) + :is(.form-group) {
+        margin-block-start: var(--gap-6);
+    }
+
+    .form-group > * + *,
+    word-count-advisory > * + * {
+        margin-block-start: var(--gap);
+    }
+
+    fieldset > * + * {
+        margin-block-start: var(--gap-3);
+    }
+
+    /* (add fieldset to :is(.form-group) rule above &) replace with better/more proper solution for the fieldset (inline-start) border starting at top the legend */
+    fieldset,
+    fieldset legend + * {
+        margin-block-start: 0;
+    }
+
+    fieldset legend {
+        padding-block-start: var(--gap-6);
+    }
+
+
+    /* end of replace with proper solution */
+
+    .form-group:not(:has(input[type="radio"])),
+    conditional-reveal > fieldset {
+        border-inline-start: 5px solid transparent;
+        padding-inline-start: var(--gap-2);
+    }
+
+    :is(.form-group, fieldset) * {
+        margin-block-end: 0;
+    }
+
+
+    conditional-reveal > fieldset .form-group:has(input[type="radio"]) + * {
+        padding-inline-start: 2rem;
+        border-inline-start: 4px solid var(--cl-gray-text);
+        margin-inline-start: calc(var(--touch-target-width)/2);
+    }
+
+    .js-enabled conditional-reveal > fieldset .form-group:has(input[type="radio"]:not(:checked)) + * {
+        display: none;
+    }
+
+    /* .js-enabled conditional-reveal:defined > fieldset .form-group:has(input[type="radio"]:checked) + * {
+        display: revert;
+    } */
+
+
+    .form-group label {
+        display: block;
+    }
+
+    .form-group .hint {
+        color: var(--cl-canvas-text-secondary);
+    }
+
+    .form-group [id]:has(> .error-message) {
+        margin: 0;
+        display: contents;
+    }
+
+    .error-message {
+        display: none;
+        margin-block-start: 0;
+        color: var(--cl-error-text);
+        font-weight: bold;
+    }
+
+    .form-group * + :is(input, select, textarea),
+    .form-group * + word-count-advisory > :first-child {
+        margin-block-start: var(--gap-2);
+    }
+
+    /* invalid indicators
+    */
+
+    /* border on the formcontrol */
+    form[novalidate] :where(input, textarea, select)[aria-invalid="true"],
+    /*word count*/
+    form[novalidate] textarea[data-over],
+    /*conditional reveal radio*/
+    form[novalidate] conditional-reveal > fieldset[data-invalid] input[type="radio"]:not(:valid) {
+        border-color: var(--cl-error-border);
+    }
+
+    /* border/line at block-start of the formgroup */
+    form[novalidate] .form-group:has([aria-invalid="true"]:not(conditional-reveal > fieldset input[type="radio"])),
+    form[novalidate] conditional-reveal > fieldset[data-invalid] {
+        border-inline-start-color: var(--cl-error-border);
+    }
+
+    /* errormessage (needs to be inside a wrapper element (which gets referenced by aria-described by see [Accessible Name and Description Computation 1.2](https://www.w3.org/TR/accname-1.2/)) */
+    form[novalidate] .form-group:has([aria-invalid="true"]:not(:disabled, [readonly])) .error-message,
+    /* conditional reveal radio */
+    fieldset[data-invalid]:not(:has(input[type="radio"]:user-valid)) legend + [id] > .error-message {
+        display: revert;
+        margin-block-start: var(--gap);
+    }
+
+    /*word count*/
+    .form-group:has(textarea[data-over]) [aria-hidden="true"] {
+        color: var(--cl-error-text);
+    }
+
+    /*attachment*/
+
+    .attachment {
+        display: flex;
+        flex-direction: row;
+        gap: var(--gap-3);
+    }
+
+    .attachment > a:first-child {
+        flex-shrink: 0;
+        display: block;
+        height: max(2 * var(--touch-target-height) + 1lh, 3lh);
+        aspect-ratio: 26/35;
+    }
+
+    .attachment > a:first-child > svg {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    .attachment > a:first-child > svg rect {
+        fill: var(--cl-canvas);
+        stroke: var(--cl-canvas-text-secondary);
+    }
+
+    .attachment > a:first-child > svg line {
+        stroke: var(--cl-gray-text);
+    }
+
+    .attachment > :nth-child(2) > * {
+        margin-block: 0;
+    }
+
+    .attachment > :nth-child(2) > * + * {
+        margin-block-start: var(--gap);
+    }
+
+    .attachment > :nth-child(2) > :first-child + * {
+        margin-block-start: var(--gap-2);
+    }
+
+    /* text processing status */
+    text-status {
+        display: block;
+        padding: var(--gap-2);
+        border-inline-start: 5px solid var(--cl-canvas-text-secondary);
+    }
+
+    text-status[status="processing"] {
+        border-color: var(--cl-accent-color);
+    }
+
+    text-status[status="processing"] [data-key="message"] {
+        background-color: color-mix(in srgb, var(--cl-accent-color) 20%, var(--cl-canvas));
+        color: var(--cl-accent-color-text);
+    }
+
+    text-status:is([status="completed"], [status="failed"]) {
+        border-inline-start: 0;
+        padding: 0;
+    }
+
+    .tag[data-type="completed"],
+    text-status[status="completed"] [data-key="message"] {
+        background-color: color-mix(in srgb, var(--cl-primary) 20%, var(--cl-canvas));
+    }
+
+    .tag[data-type="failed"],
+    text-status[status="failed"] [data-key="message"] {
+        background-color: color-mix(in srgb, var(--cl-error) 20%, var(--cl-canvas));
+    }
+
+
+    /*status message and no-JS fallback link */
+    text-status > div:first-child {
+        display: flex;
+        align-items: baseline;
+        gap: var(--gap);
+    }
+
+
+    .tag,
+    text-status [data-key="message"] {
+        display: inline-block;
+        border-radius: 1px;
+        padding: 3px 8px;
+    }
+
+
+    text-status [data-live] {
+        margin-block-start: var(--gap);
+    }
+
+    text-status [data-key="progress"] {
+        font-variant-numeric: tabular-nums;
+        text-align: end;
+    }
+
+}
+
+@layer utilities {
+    .skiptocontent:not(:focus-visible) {
+        position: absolute;
+        left: -10000px;
+        top: auto;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+    }
+
+    /* https://www.a11yproject.com/posts/how-to-hide-content */
+    .visually-hidden {
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        height: 1px;
+        overflow: hidden;
+        position: absolute;
+        white-space: nowrap;
+        width: 1px;
+    }
+
+    .no-icon {
+        mask: revert;
+        -webkit-mask: revert;
+    }
+
+    .no-icon::before {
+        all: revert;
+    }
+
+    [hidden] {
+        display: none;
+    }
+
+    .js {
+        display: none;
+    }
+
+    body.js-enabled .js {
+        display: revert;
+    }
+
+    body.js-enabled .no-js {
+        display: none;
+    }
+
+    /* DISABLED STATE */
+
+    :where(button, input, textarea, select, option, optgroup):disabled,
+    input:disabled::file-selector-button,
+    select:disabled > button,
+    input:where([type=date], [type=time], [type=datetime-local]):read-only {
+        color: var(--cl-gray-text);
+    }
+}

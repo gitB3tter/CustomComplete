@@ -1,0 +1,124 @@
+<!-- html-validate-disable attr-case-->
+<!-- html-validate-disable attr-spacing-->
+{{define "body"}}
+<a href="/texts/{{.ID}}" rel="up">
+    Back
+</a>
+<main>
+    {{template "partials_error-summary-start" .EditFormData.HasErrors}}
+    {{with .Errors}}
+    {{template "texts_errors" .}}
+    {{end}}
+    {{with .ErrorPrecondition}}
+    {{if or (.Required) (.Failed)}}
+    <!-- html-validate-disable element-permitted-parent-->
+    <li>
+        {{T "TextEditFormPreconditionBefore"}}
+        <a href="/texts/{{.ID}}" target="_blank" rel="noopener noreferrer">
+            {{T "TextEditFormPreconditionAnchor"}} {{T "CommonAnchorNewTab"}}
+        </a>
+        {{T "TextEditFormPreconditionAfter"}}
+    </li>
+    {{end}}
+    {{end}}
+    <!-- html-validate-enable element-permitted-parent-->
+    {{template "partials_error-summary-end"}}
+    <h1>
+        {{T "NavigationTextEditForm" .Name}}
+    </h1>
+    <enhanced-form prefer-return="minimal" error-title-prefix="{{T `CommonErrorMessagePrefixSR`}}">
+        <form method="post" action="/texts/{{.ID}}" enctype="multipart/form-data" novalidate autocomplete="off">
+            {{template "partials_hidden-etag" .ETagStrong}}
+            {{template "texts_name" .}}
+            <conditional-reveal>
+                <fieldset {{if .Errors.source}} data-invalid {{end}} aria-describedby="source-error">
+                    <legend>
+                        {{T "TextEditFormChoice"}}
+                    </legend>
+                    <div id="source-error">
+                        <p class="error-message" data-default-message='{{T "TextCreateFormUnselected"}}'>
+                            <span class="visually-hidden">{{T "CommonErrorMessagePrefixSR"}}:</span>
+                            {{with .Errors.source}}
+                            {{T .}}
+                            {{else}}
+                            {{T "TextCreateFormUnselected"}}
+                            {{end}}
+                        </p>
+                    </div>
+                    <div class="form-group">
+                        <input type="radio" name="source" id="source_keep" value="keep" required {{if eq .Source
+                            `keep`}} checked {{end}}>
+                        <label for="source_keep">
+                            {{T "TextEditFormChoiceKeep"}}
+                        </label>
+                    </div>
+                    {{template "texts_attachement" .}}
+                    <div class="form-group">
+                        <input type="radio" name="source" id="source_text" value="text" required {{if eq .Source
+                            `text`}} checked {{end}}>
+                        <label for="source_text">
+                            {{T "TextEditFormChoiceText"}}
+                        </label>
+                    </div>
+                    {{template "texts_text" .}}
+                    <div class="form-group">
+                        <input type="radio" name="source" id="source_file" value="file" {{if eq .Source `file`}} checked
+                            {{end}}>
+                        <label for="source_file">
+                            {{T "TextEditFormChoiceFile"}}
+                        </label>
+                    </div>
+                    {{template "texts_file" .}}
+                </fieldset>
+            </conditional-reveal>
+            <div class="action-bar">
+                {{if .PreconditionFailed}}
+                {{template "texts_edit_form_precondition-submit"}}
+                {{else}}
+                <button type="submit">
+                    {{T "CommonActionSaveChanges"}}
+                </button>
+                {{end}}
+            </div>
+        </form>
+        {{template "partials_banner-success-template" "TextUpdateFlashSuccess"}}
+        <template data-error>
+            {{template "partials_banner-error-start" .}}
+            <p data-replace>
+                {{T "TextEditFormError"}}
+                <a href="/texts/{{.ID}}">{{T "TextEditFormErrorLabelLink"}}</a>
+            </p>
+            {{template "partials_banner-error-end" .}}
+        </template>
+        <template data-precondition-list>
+            {{template "texts_edit_form_precondition-list" .}}
+        </template>
+        <template data-precondition-submit>
+            {{template "texts_edit_form_precondition-submit"}}
+        </template>
+    </enhanced-form>
+</main>
+{{end}}
+
+{{define "head-elements"}}
+<link rel="up" href="/texts/{{.ID}}">
+<script type="module" src="/static/script/enhance.js"></script>
+{{end}}
+
+{{define "texts_edit_form_precondition-list"}}
+<p>
+    {{T "TextEditFormPreconditionBefore"}} <a href="/texts/{{.ID}}" target="_blank" rel="noopener noreferrer">{{T
+        "TextEditFormPreconditionAnchor"}} {{T "CommonAnchorNewTab"}}</a> {{T
+    "TextEditFormPreconditionAfter"}}
+</p>
+{{end}}
+
+{{define "texts_edit_form_precondition-submit"}}
+<button type="submit" data-type="warning">
+    {{T "TextEditFormActionOverwrite"}}
+</button>
+{{end}}
+
+{{define "texts_error-summary-precondition"}}
+{{template "texts_edit_form_precondition-list"}}
+{{end}}

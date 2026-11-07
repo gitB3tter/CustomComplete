@@ -1,0 +1,8 @@
+{
+    "schema": {
+        "type": "string",
+        "examples": [
+            "no-store, max-age=0"
+        ]
+    }
+}

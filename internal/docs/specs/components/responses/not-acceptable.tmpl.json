@@ -1,0 +1,37 @@
+{
+    "description": "{{T `HTTPErrorNotAcceptable`}}",
+    "headers": {
+        "Cache-Control": {
+            "$ref": "/docs/specs/components/headers/no-store"
+        }
+    },
+    "content": {
+        "application/problem+json": {
+            "schema": {
+                "$ref": "/docs/problems/generic"
+            },
+            "example": {
+                "detail": "{{T `HTTPErrorNotAcceptableDescription`}} {{T `HTTPErrorNotAcceptableAvailable` `text/html;charset=utf-8,application/json`}} text/html;charset=utf-8, application/json"
+            }
+        },
+        "application/json": {
+            "schema": {
+                "$ref": "/docs/problems/generic"
+            },
+            "example": {
+                "detail": "{{T `HTTPErrorNotAcceptableDescription`}} {{T `HTTPErrorNotAcceptableAvailable` `text/html;charset=utf-8,application/json`}} text/html;charset=utf-8, application/json"
+            }
+        },
+        "text/html": {
+            "schema": {
+                "type": "string"
+            }
+        },
+        "text/plain": {
+            "schema": {
+                "type": "string"
+            },
+            "example": "{{T `HTTPErrorNotAcceptableDescription`}} {{T `HTTPErrorNotAcceptableAvailable`}} text/html;charset=utf-8, application/json"
+        }
+    }
+}

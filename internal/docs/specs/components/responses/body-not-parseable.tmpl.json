@@ -1,0 +1,37 @@
+{
+    "description": "{{T `CommonErrorSummaryTitle`}}",
+    "headers": {
+        "Cache-Control": {
+            "$ref": "/docs/specs/components/headers/no-store"
+        }
+    },
+    "content": {
+        "application/problem+json": {
+            "schema": {
+                "$ref": "/docs/problems/generic"
+            },
+            "example": {
+                "detail": "{{T `HTTPErrorBodyNotParseable`}}"
+            }
+        },
+        "application/json": {
+            "schema": {
+                "$ref": "/docs/problems/generic"
+            },
+            "example": {
+                "detail": "{{T `HTTPErrorBodyNotParseable`}}"
+            }
+        },
+        "text/html": {
+            "schema": {
+                "type": "string"
+            }
+        },
+        "text/plain": {
+            "schema": {
+                "type": "string"
+            },
+            "example": "{{T `HTTPErrorBodyNotParseable`}}"
+        }
+    }
+}

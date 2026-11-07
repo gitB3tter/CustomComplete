@@ -1,0 +1,51 @@
+{{define "body"}}
+<main>
+    <header>
+        <h1>
+            <span>
+                {{T "ApplicationName"}}
+            </span>
+        </h1>
+        <p>
+            {{T "HomeSubtitle"}}
+        </p>
+    </header>
+    <nav aria-labelledby="home-nav-heading">
+        <h2 id="home-nav-heading">
+            {{T "HomeNavHeading"}}
+        </h2>
+        <ul>
+            <li>
+                <h3>
+                    <a href="/texts">
+                        {{T "Texts"}}
+                    </a>
+                </h3>
+                <p>
+                    {{T "HomeTextsDescription"}}
+                </p>
+            </li>
+            <li>
+                <h3>
+                    <a href="/suggestions">
+                        {{T "Suggestions"}}
+                    </a>
+                </h3>
+                <p>
+                    {{T "HomeSuggestionsDescription"}}
+                </p>
+            </li>
+            <li>
+                <h3>
+                    <a href="/docs">
+                        {{T "Documentation"}}
+                    </a>
+                </h3>
+                <p>
+                    {{T "HomeDocumentationDescription"}}
+                </p>
+            </li>
+        </ul>
+    </nav>
+</main>
+{{end}}

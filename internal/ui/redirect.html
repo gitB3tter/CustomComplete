@@ -1,0 +1,7 @@
+{{define "body"}}<main>
+    <h1>{{.Base.Title}}</h1>
+    <p>
+        {{if .Message}}{{.Message}} {{end}}<a href="{{.Location}}">{{.LocationLabel}}</a>.
+    </p>
+</main>
+{{end}}

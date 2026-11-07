@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /suggestions?
+Disallow: /texts/new
+Disallow: /texts/*/edit
+Disallow: /texts/*/delete
+Disallow: /texts/*/status

@@ -1,0 +1,567 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextCollection`}}",
+        "version": "0.1.0",
+        "description": "{{T `TextCollectionMetaDescription`}}"
+    },
+    "paths": {
+        "/texts": {
+            "parameters": [
+                {
+                    "$ref": "/docs/specs/components/parameters/accept-language"
+                }
+            ],
+            "get": {
+                "summary": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextCollection`}}",
+                "responses": {
+                    "200": {
+                        "description": "{{T `TextCollectionMetaDescription`}}",
+                        "headers": {
+                            "Link": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "</>; rel=\"up\"; title=\"{{T `NavigationHome`}}\", </texts>; rel=\"self\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"create-form\"; title=\"{{T `NavigationTextCreateForm`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts>; rel=\"alternate\"; type=\"application/linkset\", </texts>; rel=\"alternate\"; type=\"application/linkset+json\", </texts>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
+                                    ]
+                                }
+                            },
+                            "Allow": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "GET, HEAD, POST, OPTIONS"
+                                    ]
+                                }
+                            },
+                            "Accept-Post": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "multipart/form-data"
+                                    ]
+                                }
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "ETag": {
+                                "$ref": "/docs/specs/components/headers/etag-weak"
+                            },
+                            "Vary": {
+                                "description": "{{T `HTTPVary`}}",
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "Accept-Language, Accept, Cookie"
+                                    ]
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/linkset": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "application/linkset+json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            },
+                            "text/html": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "{{T `HTTPNotModified`}}",
+                        "headers": {
+                            "Link": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Link"
+                            },
+                            "Allow": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Allow"
+                            },
+                            "Accept-Post": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Accept-Post"
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "ETag": {
+                                "$ref": "/docs/specs/components/headers/etag-weak"
+                            },
+                            "Vary": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Vary"
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "/docs/specs/components/responses/body-not-allowed"
+                    },
+                    "406": {
+                        "$ref": "/docs/specs/components/responses/not-acceptable"
+                    },
+                    "500": {
+                        "$ref": "/docs/specs/components/responses/internal-error"
+                    }
+                }
+            },
+            "head": {
+                "responses": {
+                    "200": {
+                        "description": "{{T `NavigationTextCollection`}}",
+                        "headers": {
+                            "Link": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Link"
+                            },
+                            "Allow": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Allow"
+                            },
+                            "Accept-Post": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Accept-Post"
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "ETag": {
+                                "$ref": "/docs/specs/components/headers/etag-weak"
+                            },
+                            "Vary": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Vary"
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "{{T `HTTPNotModified`}}",
+                        "headers": {
+                            "Link": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Link"
+                            },
+                            "Allow": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Allow"
+                            },
+                            "Accept-Post": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Accept-Post"
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "ETag": {
+                                "$ref": "/docs/specs/components/headers/etag-weak"
+                            },
+                            "Vary": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Vary"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "{{T `HTTPErrorRequestBodyNotAllowed`}}",
+                        "headers": {
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-store"
+                            }
+                        }
+                    },
+                    "406": {
+                        "description": "{{T `HTTPErrorNotAcceptable`}}",
+                        "headers": {
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-store"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "{{T `CommonErrorService`}}",
+                        "headers": {
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-store"
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "responses": {
+                    "204": {
+                        "description": "{{T `NavigationTextCollection`}}",
+                        "headers": {
+                            "Link": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "</>; rel=\"up\"; title=\"{{T `NavigationHome`}}\", </texts>; rel=\"self\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"create-form\"; title=\"{{T `NavigationTextCreateForm`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts>; rel=\"alternate\"; type=\"text/html\", </texts>; rel=\"alternate\"; type=\"application/linkset\", </texts>; rel=\"alternate\"; type=\"application/linkset+json\", </texts>; rel=\"alternate\"; hreflang=\"en\", </texts>; rel=\"alternate\"; hreflang=\"de\""
+                                    ]
+                                }
+                            },
+                            "Allow": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Allow"
+                            },
+                            "Accept-Post": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Accept-Post"
+                            },
+                            "Access-Control-Allow-Origin": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "*"
+                                    ]
+                                }
+                            },
+                            "Access-Control-Allow-Methods": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "GET, HEAD, POST, OPTIONS"
+                                    ]
+                                }
+                            },
+                            "Access-Control-Allow-Headers": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "*"
+                                    ]
+                                }
+                            },
+                            "Access-Control-Expose-Headers": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "Link, Allow, Accept-Post, Location, Preference-Applied, Content-Location, Set-Cookie, Vary"
+                                    ]
+                                }
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "Vary": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Vary"
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "/docs/specs/components/responses/body-not-allowed"
+                    }
+                }
+            },
+            "post": {
+                "summary": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextCreateForm`}}",
+                "parameters": [
+                    {
+                        "$ref": "/docs/specs/components/parameters/prefer-return"
+                    }
+                ],
+                "requestBody": {
+                    "$ref": "/docs/specs/texts/components/form-body"
+                },
+                "responses": {
+                    "201": {
+                        "description": "{{T `TextItemMetaDescription` (T `DocsSpecsExampleTextName`)}}",
+                        "headers": {
+                            "Link": {
+                                "$ref": "/docs/specs/texts/item#/paths/~1texts~1{textID}/get/responses/200/headers/Link"
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "Content-Location": {
+                                "description": "{{T `TextCreateFlashSuccess`}}",
+                                "schema": {
+                                    "type": "string",
+                                    "format": "uri-reference"
+                                },
+                                "example": "/texts/1"
+                            },
+                            "ETag": {
+                                "$ref": "/docs/specs/components/headers/etag-weak"
+                            },
+                            "Location": {
+                                "required": true,
+                                "description": "{{T `TextCreateFlashSuccess`}}",
+                                "schema": {
+                                    "type": "string",
+                                    "format": "uri-reference"
+                                },
+                                "example": "/texts/1"
+                            },
+                            "Preference-Applied": {
+                                "$ref": "/docs/specs/components/headers/preference-return-applied"
+                            },
+                            "Vary": {
+                                "description": "{{T `HTTPVary`}}",
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "Accept-Language, Accept, Prefer"
+                                    ]
+                                }
+                            }
+                        },
+                        "content": {
+                            "text/html": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "/docs/schemas/texts/item"
+                                }
+                            }
+                        }
+                    },
+                    "303": {
+                        "description": "{{T `HTTPRedirectSeeOther`}}",
+                        "headers": {
+                            "Location": {
+                                "$ref": "#/paths/~1texts/post/responses/201/headers/Location"
+                            },
+                            "Set-Cookie": {
+                                "description": "{{T `TextCreateFlashSuccess`}}",
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "created=; Path=/texts/1; Max-Age=60"
+                                    ]
+                                }
+                            }
+                        },
+                        "content": {
+                            "text/html": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "/docs/specs/components/responses/body-not-parseable"
+                    },
+                    "413": {
+                        "$ref": "/docs/specs/components/responses/content-too-large"
+                    },
+                    "422": {
+                        "$ref": "/docs/specs/components/responses/unprocessable-content"
+                    },
+                    "500": {
+                        "$ref": "/docs/specs/components/responses/internal-error"
+                    }
+                }
+            }
+        },
+        "/texts/new": {
+            "parameters": [
+                {
+                    "$ref": "/docs/specs/components/parameters/accept-language"
+                }
+            ],
+            "get": {
+                "summary": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextCreateForm`}}",
+                "responses": {
+                    "200": {
+                        "description": "{{T `TextCreateFormMetaDescription`}}",
+                        "headers": {
+                            "Link": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "</texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"self\"; title=\"{{T `NavigationTextCreateForm`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts/new>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
+                                    ]
+                                }
+                            },
+                            "Allow": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "GET, HEAD, OPTIONS"
+                                    ]
+                                }
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "ETag": {
+                                "$ref": "/docs/specs/components/headers/etag-weak"
+                            },
+                            "Vary": {
+                                "description": "{{T `HTTPVary`}}",
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "Accept-Language, Accept"
+                                    ]
+                                }
+                            }
+                        },
+                        "content": {
+                            "text/html": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "{{T `HTTPNotModified`}}",
+                        "headers": {
+                            "Link": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Link"
+                            },
+                            "Allow": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Allow"
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "ETag": {
+                                "$ref": "/docs/specs/components/headers/etag-weak"
+                            },
+                            "Vary": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Vary"
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "/docs/specs/components/responses/body-not-allowed"
+                    },
+                    "406": {
+                        "$ref": "/docs/specs/components/responses/not-acceptable"
+                    },
+                    "500": {
+                        "$ref": "/docs/specs/components/responses/internal-error"
+                    }
+                }
+            },
+            "head": {
+                "responses": {
+                    "200": {
+                        "description": "{{T `NavigationTextCollection`}}",
+                        "headers": {
+                            "Link": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Link"
+                            },
+                            "Allow": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Allow"
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "ETag": {
+                                "$ref": "/docs/specs/components/headers/etag-weak"
+                            },
+                            "Vary": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Vary"
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "{{T `HTTPNotModified`}}",
+                        "headers": {
+                            "Link": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Link"
+                            },
+                            "Allow": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Allow"
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "ETag": {
+                                "$ref": "/docs/specs/components/headers/etag-weak"
+                            },
+                            "Vary": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Vary"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "{{T `HTTPErrorRequestBodyNotAllowed`}}",
+                        "headers": {
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-store"
+                            }
+                        }
+                    },
+                    "406": {
+                        "description": "{{T `HTTPErrorNotAcceptable`}}",
+                        "headers": {
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-store"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "{{T `CommonErrorService`}}",
+                        "headers": {
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-store"
+                            }
+                        }
+                    }
+                }
+            },
+            "options": {
+                "responses": {
+                    "204": {
+                        "description": "{{T `NavigationTextCollection`}}",
+                        "headers": {
+                            "Link": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "</texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"self\"; title=\"{{T `NavigationTextCollection`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts/new>; rel=\"alternate\"; hreflang=\"en\", </texts/new>; rel=\"alternate\"; hreflang=\"de\""
+                                    ]
+                                }
+                            },
+                            "Allow": {
+                                "$ref": "#/paths/~1texts~1new/get/responses/200/headers/Allow"
+                            },
+                            "Access-Control-Allow-Origin": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "*"
+                                    ]
+                                }
+                            },
+                            "Access-Control-Allow-Methods": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "GET, HEAD, OPTIONS"
+                                    ]
+                                }
+                            },
+                            "Access-Control-Allow-Headers": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "*"
+                                    ]
+                                }
+                            },
+                            "Access-Control-Expose-Headers": {
+                                "schema": {
+                                    "type": "string",
+                                    "examples": [
+                                        "Link, Allow, Vary"
+                                    ]
+                                }
+                            },
+                            "Cache-Control": {
+                                "$ref": "/docs/specs/components/headers/no-cache"
+                            },
+                            "Vary": {
+                                "$ref": "#/paths/~1texts/get/responses/200/headers/Vary"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

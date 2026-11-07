@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="{{.Base.Lang}}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <meta name="application-name" content='{{T "ApplicationName"}}'>
+    <!-- html-validate-disable long-title -->
+    <!-- html-validate-disable attr-case -->
+    <title {{if .Base.HasError}}data-error="{{T `CommonErrorMessagePrefixSR`}}" {{end}}>
+        {{- if .Base.HasError -}}
+        {{- T "CommonErrorMessagePrefixSR" -}}{{": "}}
+        {{- end -}}
+        {{- if .Base.Title -}}
+        {{- .Base.Title -}}{{" | "}}
+        {{- end -}}
+        {{- T "ApplicationName" -}}
+    </title>
+    <!-- html-validate-enable long-title -->
+    {{with .Base.MetaDescription}}
+    <meta name="description" content="{{.}}">
+    {{end}}
+    {{if .Base.NoIndex}}
+    <meta name="robots" content="noindex">
+    {{end}}
+    <link rel="icon" href="/favicon-dark.ico" type="image/x-icon" sizes="16x16 32x32"
+        media="(prefers-color-scheme: dark)">
+    <link rel="icon" href="/favicon-light.ico" type="image/x-icon" sizes="16x16 32x32"
+        media="(prefers-color-scheme: light)">
+    <script>
+        if (navigator.userAgent.includes("Firefox")) {
+            const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+            const slapFirefox = () => {
+                const active = document.querySelector(`link[rel="icon"][media*="${scheme.matches ? 'dark' : 'light'}"]`);
+                if (active) {
+                    document.head.appendChild(active);
+                    active.href = active.href;
+                }
+            };
+            scheme.addEventListener('change', slapFirefox);
+            slapFirefox();
+        }
+    </script>
+    <link rel="stylesheet" href="/static/style/theme-system.css">
+    <link rel="stylesheet" href="/static/style/styles.css">
+    <script type="module" src="/static/script/enhance.js"></script>
+    {{if .Base.Back.Target}}
+    {{template "partials_link-head" .Base.Back}}
+    {{end}}
+    {{with .Base.Links}}
+    {{range .}}
+    {{template "partials_link-head" .}}
+    {{end}}
+    {{end}}
+    {{block "head-elements" .}}{{end}}
+</head>
+
+<body>
+    <script>
+        document.body.classList.add('js-enabled')
+    </script>
+    {{if .Base.Breadcrumbs}}
+    <nav aria-label='{{T "Breadcrumb"}}' data-type="breadcrumb">
+        <ol>
+            {{range .Base.Breadcrumbs}}
+            <li>
+                <a href="{{.Target}}" {{if .Rel}} rel="{{.Rel}}" {{end}}>{{.Title}}</a>
+            </li>
+            {{end}}
+        </ol>
+    </nav>
+    {{else if .Base.Back.Target}}
+    <a href="{{.Base.Back.Target}}" rel="{{.Base.Back.Rel}}">{{.Base.Back.Title}}</a>
+    {{end}}
+    {{template "body" .}}
+</body>
+
+</html>

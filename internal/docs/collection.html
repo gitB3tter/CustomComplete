@@ -1,0 +1,16 @@
+{{define "body"}}
+<main>
+    <h1 id="collection-heading">
+        {{.Base.Title}}
+    </h1>
+    <nav aria-labelledby="collection-heading">
+        <ul>
+            {{range .Items}}
+            <li>
+                {{template "partials_link-body" .}}
+            </li>
+            {{end}}
+        </ul>
+    </nav>
+</main>
+{{end}}

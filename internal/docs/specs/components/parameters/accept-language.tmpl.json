@@ -1,0 +1,19 @@
+{
+    "name": "Accept-Language",
+    "in": "header",
+    "required": false,
+    "description": "{{T `CommonActionChooseLanguage`}}",
+    "schema": {
+        "type": "string"
+    },
+    "examples": {
+        "en": {
+            "summary": "English",
+            "value": "en"
+        },
+        "de": {
+            "summary": "Deutsch",
+            "value": "de"
+        }
+    }
+}

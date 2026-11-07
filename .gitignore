@@ -1,0 +1,7 @@
+.*
+!.gitignore
+!.htmlvalidate.json
+!.htmlvalidateignore
+customcomplete
+*.db*
+*.sqlite*
