@@ -7,20 +7,8 @@ import (
 )
 
 // appends a header name to Vary only if it is not already present.
-func AddVaryOnce(h http.Header, name string) {
-	existing := h.Get("Vary")
-	if existing == "" {
-		h.Set("Vary", name)
-		return
-	}
-
-	for item := range strings.SplitSeq(existing, ",") {
-		if strings.EqualFold(strings.TrimSpace(item), name) {
-			return
-		}
-	}
-
-	h.Set("Vary", existing+", "+name)
+func AddVaryOnce(h http.Header, value string) {
+	addHeaderValueOnce(h, "Vary", value)
 }
 
 func SetAllowRead(w http.ResponseWriter) {
@@ -29,4 +17,20 @@ func SetAllowRead(w http.ResponseWriter) {
 
 func SetContentType(w http.ResponseWriter, mt mediatypes.Type) {
 	w.Header().Set("Content-Type", mt.String())
+}
+
+func addHeaderValueOnce(h http.Header, key, value string) {
+	existing := h.Get(key)
+	if existing == "" {
+		h.Set(key, value)
+		return
+	}
+
+	for item := range strings.SplitSeq(existing, ",") {
+		if strings.EqualFold(strings.TrimSpace(item), value) {
+			return
+		}
+	}
+
+	h.Set(key, existing+", "+value)
 }

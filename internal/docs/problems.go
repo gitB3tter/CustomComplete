@@ -1,76 +1,85 @@
 package docs
 
 import (
+	"customcomplete/internal/errs"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
 	"customcomplete/internal/transport"
-	"customcomplete/internal/ui"
 	"customcomplete/internal/weblinking"
 	_ "embed"
+	"encoding/json"
 
 	"golang.org/x/text/language"
 )
 
-const (
-	problems               path = "/docs/problems"
-	problemGeneric         path = "/docs/problems/generic"
-	problemValidation      path = "/docs/problems/validation"
-	problemExtensionErrors path = "/docs/problems/extensions/errors"
-)
-
 var (
-	//go:embed problems/extensions/errors.tmpl.json
-	problemsExtensionErrorsTmplJSON string
-	//go:embed problems/validation.tmpl.json
-	problemsValidationTmplJSON string
-	//go:embed problems/generic.tmpl.json
-	problemsGenericTmplJSON string
-	problemsTemplatesJSON   = map[path][]string{
-		problemValidation:      {problemsValidationTmplJSON},
-		problemGeneric:         {problemsGenericTmplJSON},
-		problemExtensionErrors: {problemsExtensionErrorsTmplJSON},
-	}
-	problemPaths = []path{
-		problems,
-		problemGeneric,
-		problemValidation,
-		problemExtensionErrors,
+	problemsPaths []weblinking.Path = []weblinking.Path{
+		transport.ProblemGenericPath,
+		transport.ProblemErrorsPath,
+		errs.SchemaPath,
 	}
 )
 
-func (h *docsHandler) initProblems(baseTemplates *ui.BaseTemplates) (err error) {
-	escapes := make(map[path]map[language.Tag]weblinking.Link)
-	links := make(map[path]map[language.Tag]weblinking.Links)
-	items := make(map[language.Tag]weblinking.Links)
-	for _, path := range problemPaths {
+func (h *docsHandler) initProblems() (err error) {
+	escapes := make(map[weblinking.Path]map[language.Tag]weblinking.Link)
+	links := make(map[weblinking.Path]map[language.Tag]weblinking.Links)
+	for _, path := range problemsPaths {
 		escapes[path] = make(map[language.Tag]weblinking.Link)
 		links[path] = make(map[language.Tag]weblinking.Links)
 	}
 	for _, langTag := range i18n.SupportedLanguages {
 		T := i18n.Func(langTag)
-		escapes[problems][langTag] = weblinking.New(weblinking.Up, docsPath()).WithTitle(T(i18n.DocsTitlePrefix))
-		links[problems][langTag] = append(links[problems][langTag],
-			escapes[problems][langTag],
-			weblinking.New(weblinking.Self, problems.url()),
-		)
-		items[langTag] = weblinking.Links{
-			weblinking.New(weblinking.Item, problemValidation.url()).WithTitle(T(i18n.NavigationDocsProblemValidation)).WithType(mediatypes.SchemaJSON),
-			weblinking.New(weblinking.Item, problemGeneric.url()).WithTitle(T(i18n.NavigationDocsProblemGeneric)).WithType(mediatypes.SchemaJSON),
+		escapes[transport.ProblemErrorsPath][langTag] = weblinking.New(weblinking.Up, weblinking.DocsPath).
+			WithTitle(T(i18n.NavigationDocumentation))
+		links[transport.ProblemErrorsPath][langTag] = weblinking.Links{
+			weblinking.New(weblinking.Up, weblinking.DocsPath).
+				WithTitle(T(i18n.NavigationDocumentation)),
+			weblinking.New(weblinking.Self, transport.ProblemErrorsPath),
 		}
-		escapes[problemValidation][langTag] = weblinking.New(weblinking.Up, problems.url()).WithTitle(T(i18n.DocsTitlePrefix) + ": " + T(i18n.NavigationDocsProblems))
-		escapes[problemExtensionErrors][langTag] = weblinking.New(weblinking.Up, problems.url()).WithTitle(T(i18n.DocsTitlePrefix) + ": " + T(i18n.NavigationDocsProblems))
-		escapes[problemGeneric][langTag] = weblinking.New(weblinking.Up, problems.url()).WithTitle(T(i18n.DocsTitlePrefix) + ": " + T(i18n.NavigationDocsProblems))
+		escapes[transport.ProblemGenericPath][langTag] = weblinking.New(weblinking.Up, weblinking.DocsPath).
+			WithTitle(T(i18n.NavigationDocumentation))
+		links[transport.ProblemGenericPath][langTag] = weblinking.Links{
+			weblinking.New(weblinking.Up, weblinking.DocsPath).
+				WithTitle(T(i18n.NavigationDocumentation)),
+			weblinking.New(weblinking.Self, transport.ProblemGenericPath),
+		}
+		escapes[errs.SchemaPath][langTag] = weblinking.New(weblinking.Up, transport.ProblemErrorsPath).
+			WithTitle(T(i18n.NavigationDocumentation) + ": " + T(i18n.NavigationDocsProblemInvalidParams))
+		links[errs.SchemaPath][langTag] = weblinking.Links{
+			weblinking.New(weblinking.Up, transport.ProblemErrorsPath).
+				WithTitle(T(i18n.NavigationDocumentation) + ": " + T(i18n.NavigationDocsProblemInvalidParams)),
+			weblinking.New(weblinking.Self, errs.SchemaPath),
+		}
 	}
 
-	for path := range problemsTemplatesJSON {
-		h.cache[path], err = transport.New(path.url(), escapes[path], links[path]).With(mediatypes.SchemaJSON, baseTemplates, problemsTemplatesJSON[path], nil)
-		if err != nil {
+	output := map[weblinking.Path]map[language.Tag][]byte{
+		transport.ProblemErrorsPath:  make(map[language.Tag][]byte, len(i18n.SupportedLanguages)),
+		transport.ProblemGenericPath: make(map[language.Tag][]byte, len(i18n.SupportedLanguages)),
+		errs.SchemaPath:              make(map[language.Tag][]byte, len(i18n.SupportedLanguages)),
+	}
+	for _, langTag := range i18n.SupportedLanguages {
+		if output[transport.ProblemErrorsPath][langTag], err = json.Marshal(transport.ProblemErrorSchema(langTag)); err != nil {
+			return
+		}
+		if output[transport.ProblemGenericPath][langTag], err = json.Marshal(transport.ProblemGenericSchema(langTag)); err != nil {
+			return
+		}
+		if output[errs.SchemaPath][langTag], err = json.Marshal(errs.Schema(langTag)); err != nil {
 			return
 		}
 	}
 
-	if h.cache[problems], err = transport.New(problems.url(), escapes[problems], links[problems]).WithLinkset(items, mediatypes.Linkset, mediatypes.LinksetJSON); err != nil {
-		return
+	for _, path := range problemsPaths {
+		h.cache[path] = transport.NewCache(
+			path,
+			escapes[path],
+			links[path],
+		).With(
+			mediatypes.SchemaJSON,
+			output[path],
+		)
+
 	}
+
 	return
 }

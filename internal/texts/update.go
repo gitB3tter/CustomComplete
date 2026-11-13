@@ -6,6 +6,7 @@ import (
 	"customcomplete/internal/errs"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
+	"customcomplete/internal/schema"
 	"customcomplete/internal/transport"
 	"customcomplete/internal/ui"
 	"customcomplete/internal/weblinking"
@@ -18,26 +19,20 @@ import (
 )
 
 func (h *handler) registerUpdate(mux *http.ServeMux) {
-	mux.Handle("POST /texts/{id}",
+	mux.Handle("POST /texts/{textID}",
 		transport.LimitBody(
-			transport.ParsePreference(
-				h.update,
-			),
+			h.update,
 			mediatypes.Types{mediatypes.MultipartForm}, maxPayloadSize),
 	)
-	mux.Handle("PATCH /texts/{id}",
+	mux.Handle("PATCH /texts/{textID}",
 		transport.LimitBody(
-			transport.ParsePreference(
-				h.patch,
-			),
+			h.patch,
 			mediatypes.Types{mediatypes.MergePatchJSON}, transport.MB(1)),
 	)
-	mux.Handle("PUT /texts/{id}/file",
+	mux.Handle("PUT /texts/{textID}/file",
 		transport.LimitBody(
-			transport.ParsePreference(
-				h.replaceFile,
-			),
-			mediatypes.Types{mediatypes.TextPlain}, catalog.MaxFileSize),
+			h.replaceFile,
+			mediatypes.Types{mediatypes.TextPlain}, constraints.MaxFileSize),
 	)
 }
 
@@ -46,87 +41,70 @@ func (h *handler) update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	langTag := i18n.LangTagFromContext(ctx)
 
-	docID, doc, proceed := h.getDocOrRespond(w, r, r.PathValue("id"))
+	docID, doc, proceed := h.getDocOrRespond(w, r)
 	if !proceed {
 		return
 	}
-	itemLink := weblinking.New(weblinking.Up, itemPath(docID)).WithTitle(string(doc.Name))
+	itemLink := weblinking.New(weblinking.Up, TextsItemPath(docID)).WithTitle(string(doc.Name))
 
-	userData, filenameRaw, contentsRaw, proceed := parseMultipartFormOrRespond(w, r, langTag, itemLink)
+	userData, filenameRaw, contents, errSource, proceed := parseMultipartFormOrRespond(w, r, langTag, itemLink, validSources)
 	if !proceed {
 		return
 	}
 
-	var ETagStrong transport.ETagStrong
-	if ETagStrong, proceed = itemEtagStrongOr500(w, r, docID, doc); !proceed {
-		return
+	T := i18n.Func(langTag)
+
+	var errCoded *errs.CodedError
+	var errsField errs.FieldErrors
+	var srcContents catalog.SourceContents
+	if errSource != nil {
+		errsField.AddCoded(sourceField, *errSource, T(i18n.TextCreateFormUnselected))
+	} else if userData.Source == keep {
+	} else if srcContents, errCoded = catalog.ParseSourceContents(contents); errCoded != nil {
+		switch userData.Source {
+		case file:
+			errsField = append(errsField, mapFileError(langTag, *errCoded))
+		case text:
+			errsField = append(errsField, mapTextError(langTag, *errCoded))
+		default:
+			errsField.AddCoded(sourceField, errs.Enum(validSources.toAny(), userData.Source), T(i18n.TextCreateFormUnselected))
+		}
 	}
+
+	etagStrong := itemETagStrong(doc)
 
 	respondError := func(err error) {
-		h.respondUpdateErrors(w, r, docID, userData, doc, err, ETagStrong)
+		h.respondUpdateErrors(w, r, docID, userData, doc, err, etagStrong)
 	}
 
-	if errPreconditon := transport.Precondition(ETagStrong, r.FormValue(ui.HiddenFieldEtag), langTag); errPreconditon != nil {
-		respondError(errPreconditon)
+	if errPrecondition := transport.Precondition(etagStrong, r.FormValue(ui.HiddenFieldEtag), langTag); errPrecondition != nil {
+		respondError(errPrecondition)
 		return
 	}
-
-	fieldErrs := &errs.FieldErrors{}
 	patchMeta := catalog.DocumentPatchMetadata{}
 
-	var docName catalog.DocumentName
-	var coded *errs.CodedError
-	if docName, coded = catalog.ParseDocumentName(userData.Name); coded != nil {
-		fieldErrs.Add("name", coded)
+	var docName constraints.Label
+	if docName, errCoded = constraints.ParseLabel(userData.Name); errCoded != nil {
+		errsField = append(errsField, mapNameError(langTag, *errCoded))
 	} else {
 		patchMeta.Name = &docName
 	}
 
-	allowedSources := append(sources, "")
-
-	if !slices.Contains(allowedSources, userData.Source) {
-		var sourcesAny []any
-		for _, source := range allowedSources {
-			sourcesAny = append(sourcesAny, source)
-		}
-		params := mapCatalogErrors(langTag, fieldErrs)
-		*params = append(*params, errs.InvalidParamFromCodedError(
-			fieldSourceName,
-			errs.Enum(sourcesAny, userData.Source),
-			i18n.Func(langTag)(i18n.TextCreateFormUnselected),
-		))
-		respondError(params)
+	if len(errsField) > 0 {
+		respondError(&errsField)
 		return
 	}
 
 	var err error
-	if userData.Source != sourceKeep {
-		patchMeta.Filename = new(deriveFilename(docName, filenameRaw, contentsRaw))
-
-		var srcContents catalog.SourceContents
-		if srcContents, coded = catalog.ParseSourceContents(contentsRaw); coded != nil {
-			fieldErrs.Add(userData.Source, coded)
-		}
-
-		if !fieldErrs.OK() {
-			respondError(mapCatalogErrors(langTag, fieldErrs))
-			return
-		}
+	if userData.Source != keep {
+		patchMeta.Filename = new(deriveFilename(docName, filenameRaw, contents))
 
 		doc, err = h.service.UpdateDocument(docID, patchMeta, srcContents)
 	} else {
-		if !fieldErrs.OK() {
-			respondError(mapCatalogErrors(langTag, fieldErrs))
-			return
-		}
 		doc, err = h.service.PatchDocumentMetadata(docID, patchMeta)
 	}
 	if err != nil {
-		if fieldErrs, ok := errors.AsType[*errs.FieldErrors](err); ok {
-			respondError(mapCatalogErrors(langTag, fieldErrs))
-		} else {
-			respondError(err)
-		}
+		respondError(err)
 		return
 	}
 
@@ -137,75 +115,52 @@ func (h *handler) patch(w http.ResponseWriter, r *http.Request) {
 
 	var proceed bool
 
-	docID, doc, proceed := h.getDocOrRespond(w, r, r.PathValue("id"))
+	docID, doc, proceed := h.getDocOrRespond(w, r)
 	if !proceed {
 		return
 	}
 
-	var ETagStrong transport.ETagStrong
-	if ETagStrong, proceed = itemEtagStrongOr500(w, r, docID, doc); !proceed {
-		return
-	}
+	etagStrong := itemETagStrong(doc)
 
 	ctx := r.Context()
 	langTag := i18n.LangTagFromContext(ctx)
 	T := i18n.Func(langTag)
 
-	if errPreconditon := transport.Precondition(ETagStrong, r.Header.Get("If-Match"), langTag); errPreconditon != nil {
-		h.respondUpdateErrors(w, r, docID, FormUserData{}, doc, errPreconditon, ETagStrong)
+	if errPrecondition := transport.Precondition(etagStrong, r.Header.Get("If-Match"), langTag); errPrecondition != nil {
+		h.respondUpdateErrors(w, r, docID, FormUserData{}, doc, errPrecondition, etagStrong)
 		return
 	}
 
-	var patch map[string]json.RawMessage
+	var mergePatch map[string]json.RawMessage
 	body, err := io.ReadAll(r.Body)
 	if err == nil {
-		err = json.Unmarshal(body, &patch)
+		err = json.Unmarshal(body, &mergePatch)
 	}
 	if err != nil {
 		respondBodyNotParseableItem(w, r, docID, doc.Name)
 		return
 	}
 
-	preferences, hasPreferences := transport.GetPreferences(ctx)
-	handleLenient := hasPreferences && slices.Contains(preferences, transport.HandlingLenient)
+	handleLenient := slices.Contains(transport.ParsePreferences(r.Header), transport.HandlingLenient)
 
-	unmarshal := func(raw json.RawMessage) (any, bool) {
-		var v any
-		if err := json.Unmarshal(raw, &v); err != nil {
-			respondBodyNotParseableItem(w, r, docID, doc.Name)
-			return v, false
-		}
-		return v, true
-	}
-
-	var invalidParams errs.InvalidParams
+	var invalidParams errs.FieldErrors
 	//writeable field -> type-error message
 	write := map[string]string{"name": T(i18n.TextFieldNameType), "filename": T(i18n.TextFieldFilenameType)}
 	writeRaw := make(map[string]string, len(write))
 	//readonly field -> error message
 	readOnly := map[string]string{"filesize": T(i18n.TextFieldFilesizeReadOnly), "filehash": T(i18n.TextFieldFilehashReadOnly)}
-	for key, raw := range patch {
+	for key, raw := range mergePatch {
 		message, ok := write[key]
 		if ok {
-			val, ok := unmarshal(raw)
-			if !ok {
-				return
-			}
-			addTypeError := func(actual transport.JSONType) {
-				invalidParams.AddCoded(key, transport.ErrJSONTyp(transport.JSONTypeString, actual), message)
-			}
-			switch t := val.(type) {
-			case string:
-				writeRaw[key] = t
-			case float64:
-				addTypeError(transport.JSONTypeNumber)
-			case bool:
-				addTypeError(transport.JSONTypeBoolean)
-			case []any:
-				addTypeError(transport.JSONTypeArray)
-			case map[string]any:
-				addTypeError(transport.JSONTypeObject)
-			case nil:
+			switch actual := schema.JsonType(raw); actual {
+			case schema.String:
+				var str string
+				if err := json.Unmarshal(raw, &str); err != nil {
+					respondBodyNotParseableItem(w, r, docID, doc.Name)
+					return
+				}
+				writeRaw[key] = str
+			case schema.Null:
 				if key == "name" {
 					message = T(i18n.TextFieldNameRequired)
 				} else {
@@ -213,7 +168,7 @@ func (h *handler) patch(w http.ResponseWriter, r *http.Request) {
 				}
 				invalidParams.AddCoded(key, errs.Required(), message)
 			default:
-				addTypeError(transport.JSONTypeInvalid)
+				invalidParams.AddCoded(key, errs.Type(schema.String, actual), message)
 			}
 			continue
 		}
@@ -230,11 +185,11 @@ func (h *handler) patch(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if !handleLenient {
-			invalidParams = append(invalidParams, errs.InvalidParamFromCodedError(key, errs.Unexpected(), T(i18n.CommonErrorAdditionalProperties)))
+			invalidParams = append(invalidParams, errs.InvalidParamFromCodedError(key, errs.AdditionalProperties(), T(i18n.CommonErrorAdditionalProperties)))
 		}
 	}
 
-	update := catalog.DocumentPatchMetadata{}
+	patch := catalog.DocumentPatchMetadata{}
 
 	if rawFilename, ok := writeRaw["filename"]; ok {
 		var filename constraints.SafeFilename
@@ -244,61 +199,53 @@ func (h *handler) patch(w http.ResponseWriter, r *http.Request) {
 			filename, err = constraints.ParseSafeFilename(rawFilename)
 		}
 		if err != nil {
-			if coded, ok := errors.AsType[*errs.CodedError](err); ok {
-				invalidParams = append(invalidParams, mapFilenameError(langTag, errs.FieldFromCoded("filename", coded)))
+			if errCoded, ok := errors.AsType[*errs.CodedError](err); ok {
+				invalidParams = append(invalidParams, mapFilenameError(langTag, *errCoded))
 			} else {
 				respondInternalErrorSubresource(w, r, err, docID, doc.Name)
 				return
 			}
 		} else {
-			update.Filename = new(filename)
+			patch.Filename = new(filename)
 		}
 	}
 
 	rawName, ok := writeRaw["name"]
 	if ok {
-		docName, err := catalog.ParseDocumentName(rawName)
+		docName, err := constraints.ParseLabel(rawName)
 		if err != nil {
-			if coded, ok := errors.AsType[*errs.CodedError](err); ok {
-				invalidParams = append(invalidParams, mapNameError(langTag, errs.FieldFromCoded("name", coded)))
-			} else {
-				respondInternalErrorSubresource(w, r, err, docID, doc.Name)
-				return
-			}
+			invalidParams = append(invalidParams, mapNameError(langTag, *err))
 		} else {
-			update.Name = new(docName)
+			patch.Name = new(docName)
 		}
 	}
 
 	if len(invalidParams) > 0 {
-		h.respondUpdateErrors(w, r, docID, FormUserData{Name: rawName}, doc, &invalidParams, ETagStrong)
+		h.respondUpdateErrors(w, r, docID, FormUserData{Name: rawName}, doc, &invalidParams, etagStrong)
 		return
 	}
 
-	docNew := doc
-	if !update.Empty() {
-		docNew, err = h.service.PatchDocumentMetadata(docID, update)
+	newDoc := doc
+	if !patch.Empty() {
+		newDoc, err = h.service.PatchDocumentMetadata(docID, patch)
 		if err != nil {
 			userData := FormUserData{}
-			if update.Name != nil {
-				userData.Name = string(*update.Name)
+			if patch.Name != nil {
+				userData.Name = string(*patch.Name)
 			}
-			if fieldErrs, ok := errors.AsType[*errs.FieldErrors](err); ok {
-				err = mapCatalogErrors(langTag, fieldErrs)
-			}
-			h.respondUpdateErrors(w, r, docID, userData, doc, err, ETagStrong)
+			h.respondUpdateErrors(w, r, docID, userData, doc, err, etagStrong)
 			return
 		}
 	}
 
-	h.respondUpdateSuccess(w, r, docID, docNew, false)
+	h.respondUpdateSuccess(w, r, docID, newDoc, false)
 }
 
 func (h *handler) replaceFile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	langTag := i18n.LangTagFromContext(ctx)
 
-	docID, doc, proceed := h.getDocOrRespond(w, r, r.PathValue("id"))
+	docID, doc, proceed := h.getDocOrRespond(w, r)
 	if !proceed {
 		return
 	}
@@ -318,7 +265,7 @@ func (h *handler) replaceFile(w http.ResponseWriter, r *http.Request) {
 	}
 	srcContents, errCoded := catalog.ParseSourceContents(contents)
 	if errCoded != nil {
-		h.respondUpdateErrors(w, r, docID, FormUserData{}, doc, errCoded, etagFile)
+		h.respondUpdateErrors(w, r, docID, FormUserData{}, doc, &errs.FieldErrors{mapFileError(langTag, *errCoded)}, etagFile)
 		return
 	}
 
@@ -332,12 +279,12 @@ func (h *handler) replaceFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("ETag", string(newETagFile))
 	w.Header().Set("Link", weblinking.Links{
 		itemLinkUp(docID, newDoc.Name),
-		weblinking.New(weblinking.Self, itemPath(docID).JoinPath("file")),
+		weblinking.New(weblinking.Self, TextsItemPath(docID).Join("file")),
 	}.String())
 	transport.RespondNoContent(w)
 }
 
-func appendReadOnly[T comparable](handleLenient bool, params errs.InvalidParams, raw json.RawMessage, currentVal T, name string, message string) errs.InvalidParams {
+func appendReadOnly[T comparable](handleLenient bool, params errs.FieldErrors, raw json.RawMessage, currentVal T, name string, message string) errs.FieldErrors {
 	if handleLenient {
 		var clientVal T
 		if err := json.Unmarshal(raw, &clientVal); err != nil || clientVal != currentVal {
@@ -350,7 +297,7 @@ func appendReadOnly[T comparable](handleLenient bool, params errs.InvalidParams,
 }
 
 func (h *handler) respondUpdateSuccess(w http.ResponseWriter, r *http.Request, docID catalog.DocumentID, doc catalog.Document, setContentLocation bool) {
-	updatedItemPath := itemPath(docID)
+	updatedItemPath := TextsItemPath(docID)
 	ctx := r.Context()
 
 	flashCookie := &http.Cookie{
@@ -373,31 +320,26 @@ func (h *handler) respondUpdateSuccess(w http.ResponseWriter, r *http.Request, d
 
 	setItemHeaders(w.Header())
 
-	preferences, hasPreferences := transport.GetPreferences(ctx)
-	if !connegOK || hasPreferences && slices.Contains(preferences, transport.ReturnMinimal) {
+	preferences := transport.ParsePreferences(r.Header)
+	if !connegOK || slices.Contains(preferences, transport.ReturnMinimal) {
 		if connegOK && responseType == mediatypes.HTML {
 			http.SetCookie(w, flashCookie)
 		}
-		if hasPreferences && slices.Contains(preferences, transport.ReturnMinimal) {
-			transport.ApplyPreferences(w.Header(), transport.ReturnMinimal)
+		if slices.Contains(preferences, transport.ReturnMinimal) {
+			transport.ApplyPreference(w.Header(), transport.ReturnMinimal)
 		}
 		respondMinimalItem(w, ctx, doc, docID, http.StatusNoContent)
 		return
 	}
 
-	if hasPreferences && slices.Contains(preferences, transport.ReturnRepresentation) {
-		transport.ApplyPreferences(w.Header(), transport.ReturnRepresentation)
+	if slices.Contains(preferences, transport.ReturnRepresentation) {
+		transport.ApplyPreference(w.Header(), transport.ReturnRepresentation)
 	}
 
 	var output []byte
+	var err error
 	var ETagStr string
-
-	newEtagStrong, err := itemETagStrong(doc)
-	if err != nil {
-		slog.Warn("generate new ETagStrong", slog.Any("err", err))
-		newEtagStrong = ""
-	}
-
+	newEtagStrong := itemETagStrong(doc)
 	switch responseType {
 	case mediatypes.HTML:
 		output, err = h.bufferItemHTML(w, r, doc, docID, newEtagStrong, langTag, nil)
@@ -416,20 +358,23 @@ func (h *handler) respondUpdateSuccess(w http.ResponseWriter, r *http.Request, d
 	}
 
 	if setContentLocation {
-		w.Header().Set("Content-Location", updatedItemPath.Path)
+		w.Header().Set("Content-Location", updatedItemPath.String())
 	}
 	writeItem(ctx, w, docID, doc, output, http.StatusOK, langTag, responseType)
 }
 
-func (h *handler) respondUpdateErrors(w http.ResponseWriter, r *http.Request, docID catalog.DocumentID, userData FormUserData, doc catalog.Document, err error, ETagStrong transport.ETagStrong) {
+func (h *handler) respondUpdateErrors(w http.ResponseWriter, r *http.Request, docID catalog.DocumentID, userData FormUserData, doc catalog.Document, err error, etagStrong transport.ETagStrong) {
 
 	var output []byte
 
 	var status int
 	if errPre, ok := errors.AsType[*transport.ErrorPrecondition](err); ok {
 		status = int(errPre.Status())
-	} else if err, ok := errors.AsType[*errs.InvalidParams](err); ok {
+	} else if err, ok := errors.AsType[*errs.FieldErrors](err); ok {
 		status = http.StatusUnprocessableEntity
+	} else if errs.HasCode(err, errs.CodeNotFound) {
+		respondNotFound(w, r)
+		return
 	} else {
 		respondInternalErrorSubresource(w, r, err, docID, doc.Name)
 		return
@@ -438,27 +383,31 @@ func (h *handler) respondUpdateErrors(w http.ResponseWriter, r *http.Request, do
 	ctx := r.Context()
 	responseType := transport.ResolveErrorContentType(r)
 
+	langTag := i18n.LangTagFromContext(r.Context())
 	var etagStr string
 	switch responseType {
 	case mediatypes.HTML:
-		output, err = h.bufferEditForm(ctx, docID, newEditFormData(userData, doc, err, ETagStrong, i18n.LangTagFromContext(r.Context())))
+		output, err = h.bufferEditForm(ctx, docID, newEditFormData(userData, doc, err, etagStrong, langTag))
 		etagStr = string(transport.GetEtagWeak(output))
 	case mediatypes.ProblemJSON, mediatypes.JSON:
-		links := weblinking.Links{}
 		if errPre, ok := errors.AsType[*transport.ErrorPrecondition](err); ok {
 			output, err = transport.ProblemGeneric(errPre.Error())
-		} else if errInvalidP, ok := errors.AsType[*errs.InvalidParams](err); ok {
-			output, err = transport.ProblemValidation(r.Context(), errInvalidP, "")
-			links = append(links, transport.GetProblemDescribedBy(transport.ProblemTypeValidation)...)
+		} else if errInvalidParams, ok := errors.AsType[*errs.FieldErrors](err); ok {
+			output, err = transport.ProblemFieldError(r.Context(), *errInvalidParams, "")
+			w.Header().Set(
+				"Link",
+				transport.ProblemErrorsPath.
+					Link(weblinking.DescribedBy).
+					WithTitle(i18n.Translate(langTag, i18n.NavigationDocumentation)).String(),
+			)
 		}
-		w.Header().Set("Link", links.String())
-		etagStr = string(ETagStrong)
+		etagStr = string(etagStrong)
 	case mediatypes.TextPlain:
 		output = []byte(err.Error())
-		etagStr = string(ETagStrong)
+		etagStr = string(etagStrong)
 	}
 	if err != nil {
-		slog.Warn("buffer response text item update", slog.Any("type", responseType.String()), slog.Any("error", err))
+		slog.Warn("output response text item update", slog.Any("type", responseType.String()), slog.Any("error", err))
 		output = []byte(err.Error())
 		responseType = mediatypes.TextPlain
 	}
@@ -467,7 +416,5 @@ func (h *handler) respondUpdateErrors(w http.ResponseWriter, r *http.Request, do
 
 	w.Header().Set("ETag", etagStr)
 
-	w.Header().Set("Content-Type", responseType.String())
-	w.WriteHeader(status)
-	transport.Write(ctx, w, output)
+	transport.Write(ctx, w, output, responseType, status)
 }

@@ -1,7 +1,6 @@
 package docs
 
 import (
-	"customcomplete/internal/home"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
 	"customcomplete/internal/transport"
@@ -9,7 +8,6 @@ import (
 	"customcomplete/internal/weblinking"
 	_ "embed"
 	"net/http"
-	"net/url"
 
 	"golang.org/x/text/language"
 )
@@ -18,22 +16,11 @@ var (
 	//go:embed collection.html
 	collectionHTML string
 	//go:embed docs.html
-	docsHTML                 string
-	supportedTypesCollection mediatypes.Types = mediatypes.Types{mediatypes.HTML, mediatypes.LinksetJSON, mediatypes.Linkset}
-)
-
-type path string
-
-func (p path) url() *url.URL {
-	return &url.URL{Path: string(p)}
-}
-
-const (
-	docs path = "/docs"
+	docsHTML string
 )
 
 type docsHandler struct {
-	cache map[path]transport.PrebakedCache
+	cache map[weblinking.Path]transport.PrebakedCache
 }
 
 func (h *docsHandler) Register(mux *http.ServeMux) {
@@ -45,13 +32,13 @@ func (h *docsHandler) Register(mux *http.ServeMux) {
 func NewHandler(baseTemplates *ui.BaseTemplates) (*docsHandler, error) {
 
 	handler := &docsHandler{
-		cache: make(map[path]transport.PrebakedCache),
+		cache: make(map[weblinking.Path]transport.PrebakedCache),
 	}
 
 	if err := baseTemplates.WithHTML(docsHTML); err != nil {
 		return nil, err
 	}
-	if err := handler.initSchemas(baseTemplates); err != nil {
+	if err := handler.initSchemas(); err != nil {
 		return nil, err
 	}
 	if err := handler.initSpecs(baseTemplates); err != nil {
@@ -60,7 +47,7 @@ func NewHandler(baseTemplates *ui.BaseTemplates) (*docsHandler, error) {
 	if err := handler.initLinkRels(baseTemplates); err != nil {
 		return nil, err
 	}
-	if err := handler.initProblems(baseTemplates); err != nil {
+	if err := handler.initProblems(); err != nil {
 		return nil, err
 	}
 	if err := handler.initTexts(baseTemplates); err != nil {
@@ -82,16 +69,14 @@ func (h *docsHandler) initRoot(baseTemplates *ui.BaseTemplates) (err error) {
 
 	for _, langTag := range i18n.SupportedLanguages {
 		T := i18n.Func(langTag)
-		escapes[langTag] = weblinking.New(weblinking.Up, home.Path()).WithTitle(T(i18n.NavigationHome))
-
-		home := home.Path()
 
 		links[langTag] = weblinking.Links{
-			weblinking.New(weblinking.Item, home.JoinPath(string(TextsIndex))).WithTitle(T(i18n.NavigationTextCollection)),
-			weblinking.New(weblinking.Item, home.JoinPath(string(LinkRels))).WithTitle(T(i18n.NavigationDocsRels)),
+			weblinking.New(weblinking.Item, TextsIndexPath).WithTitle(T(i18n.NavigationTextCollection)),
+			weblinking.New(weblinking.Item, LinkRelsPath).WithTitle(T(i18n.NavigationDocsRels)),
 		}
 
-		homeLink := weblinking.New(weblinking.Up, home).WithTitle(T(i18n.NavigationHome))
+		homeLink := weblinking.New(weblinking.Up, weblinking.RootPath).WithTitle(T(i18n.NavigationHome))
+		escapes[langTag] = homeLink
 
 		data[langTag] = collection{
 			Base: ui.BaseDataHTML{
@@ -105,18 +90,18 @@ func (h *docsHandler) initRoot(baseTemplates *ui.BaseTemplates) (err error) {
 		}
 
 		links[langTag] = append(links[langTag],
-			weblinking.New(weblinking.Self, home.JoinPath(string(docs))).WithTitle(T(i18n.NavigationDocumentation)),
+			weblinking.New(weblinking.Self, weblinking.DocsPath).WithTitle(T(i18n.NavigationDocumentation)),
 			homeLink,
 		)
 	}
-	h.cache[docs], err = transport.New(docs.url(), escapes, links).With(mediatypes.HTML, baseTemplates, []string{collectionHTML}, data)
-	if err != nil {
-		return
+	if contentDocs, err := baseTemplates.Prebake(mediatypes.HTML, []string{collectionHTML}, data); err != nil {
+		return err
+	} else {
+		h.cache[weblinking.DocsPath] = transport.NewCache(weblinking.DocsPath, escapes, links).
+			With(mediatypes.HTML, contentDocs)
 	}
 
-	h.cache[docs], err = h.cache[docs].WithLinkset(links,
-		supportedTypesCollection...,
-	)
+	h.cache[weblinking.DocsPath], err = h.cache[weblinking.DocsPath].WithLinkset(links)
 
 	return
 

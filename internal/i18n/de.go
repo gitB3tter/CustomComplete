@@ -130,7 +130,6 @@ var translationsDe = map[Key]string{
 	TextFieldFilenameMinCodePoints: "Der Dateiname muss mindestens %d Zeichen lang sein",
 	TextFieldFilenameMaxBytes:      "Der Dateiname darf maximal %d Bytes lang sein",
 	TextFieldFilenamePattern:       "Der Dateiname darf nur Kleinbuchstaben, Ziffern und einfache Bindestriche enthalten",
-	TextFieldFilenameReserved:      "Dieser Dateiname ist vom Betriebssystem reserviert",
 	TextFieldFilenameInvalid:       "Der Dateiname ist ungültig",
 	TextFieldFilenameType:          "Der Dateiname muss eine Zeichenkette sein",
 	TextFieldFilenameInvalidUTF8:   "Der Dateiname enthält ungültige UTF-8-Zeichen",
@@ -152,8 +151,7 @@ var translationsDe = map[Key]string{
 	TextCreateFormChoiceFile:      "Datei hochladen",
 
 	//Erstellen
-	TextCreateFlashSuccess:      "Der Text wurde erstellt",
-	TextCreateErrorChooseSource: "Geben Sie entweder 'text' oder 'file' an, nicht beides",
+	TextCreateFlashSuccess: "Der Text wurde erstellt",
 
 	//Element
 	TextItemMetaDescription:     "%s. Text für Autovervollständigung und Nächstes-Wort-Vorschläge.",
@@ -192,7 +190,7 @@ var translationsDe = map[Key]string{
 	TextUpdatePreconditionFailed:   "Ihre Änderungen wurden nicht gespeichert. Das ETag des Texts und das ETag im If-Match-Header stimmen nicht überein.",
 
 	//Löschformular
-	TextDeleteFormTitle:            `„%s" löschen?`,
+	NavigationTextDeleteForm:       `„%s" löschen?`,
 	TextDeleteFormMetaDescription:  `Dauerhaftes Löschen von „%s" und allen abgeleiteten Vorschlägen bestätigen`,
 	TextDeleteFormWarningPermanent: ` und alle daraus abgeleiteten Vorschläge werden unwiderruflich gelöscht.`,
 	TextDeleteFormActionLabel:      "Text löschen",
@@ -234,7 +232,6 @@ var translationsDe = map[Key]string{
 
 	//---
 	//Dokumentation
-	DocsTitlePrefix:                   "Dokumentation",
 	DocsFiles:                         "Dateien",
 	DocsRelsCollectionMetaDescription: "Vom Dienst verwendete benutzerdefinierte Link-Relationen",
 	DocsRelsDeleteFormBodyDescription: "Die Zielressource stellt ein Formular zum dauerhaften Löschen der Kontextressource bereit.",
@@ -243,10 +240,15 @@ var translationsDe = map[Key]string{
 	//Problemtypen
 	DocsProblemValidationDescription:         "Die Anfrage hat die Validierung nicht bestanden. Details zu den einzelnen Feldern finden Sie unter errors.",
 	DocsProblemTitleDescription:              "Kurze Zusammenfassung des Problemtyps. Inhaltlich stets identisch, lediglich lokalisiert.",
+	DocsProblemInvalidParamsTitle:            "Feld-Fehler",
 	DocsProblemInvalidParamsDescription:      "Liste aller fehlerhaften Felder mit stabilem Fehlercode, Parametern, Feldname und lokalisierter Begründung.",
+	DocsProblemInvalidParamNameTitle:         "Name",
 	DocsProblemInvalidParamNameDescription:   "Name des fehlerhaften Felds oder Parameters",
+	DocsProblemInvalidParamCodeTitle:         "Code",
 	DocsProblemInvalidParamCodeDescription:   "Stabiler maschinenlesbarer Code der verletzten Bedingung",
+	DocsProblemInvalidParamParamsTitle:       "Parameter",
 	DocsProblemInvalidParamParamsDescription: "Zusätzliche Parameter zur Spezifikation der Bedingung, etwa Grenzwerte oder erwartete Typen",
+	DocsProblemInvalidParamReasonTitle:       "Grund",
 	DocsProblemInvalidParamReasonDescription: "Menschenlesbare, lokalisierte Fehlermeldung",
 
 	//Spezifikationsbeispiele

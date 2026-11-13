@@ -43,7 +43,7 @@ var (
 // value in Link header and linkset
 type Link struct {
 	rel       linkrel         `json:"-"`
-	target    *url.URL        `json:"-"`
+	target    url.URL         `json:"-"`
 	Context   *url.URL        `json:"-"`
 	Type      mediatypes.Type `json:"type,omitzero"`
 	Language  language.Tag    `json:"-"`
@@ -57,7 +57,7 @@ type titleExtended struct {
 }
 
 type linkTargetObject struct {
-	Target        *url.URL        `json:"-"`
+	Target        url.URL         `json:"-"`
 	Type          mediatypes.Type `json:"type,omitzero"`
 	Language      []string        `json:"hreflang,omitempty"`
 	Title         string          `json:"title,omitempty"`
@@ -72,16 +72,16 @@ func Init(origin *url.URL) {
 	DeleteForm = linkrel(origin.JoinPath(deleteFormPath).String())
 }
 
-func New(rel linkrel, target *url.URL) Link {
+func New(rel linkrel, target Path) Link {
 	return Link{
 		rel:    rel,
-		target: target,
+		target: target.URL(),
 	}
 }
 
-func Breadcrumb(target *url.URL, title string) Link {
+func Breadcrumb(target Path, title string) Link {
 	return Link{
-		target: target,
+		target: target.URL(),
 		Title:  title,
 	}
 }
@@ -90,8 +90,8 @@ func (l Link) Rel() linkrel {
 	return l.rel
 }
 
-func (l Link) Target() *url.URL {
-	return l.target
+func (l Link) Target() string {
+	return l.target.String()
 }
 
 func (l Link) Lang() string {
@@ -123,8 +123,28 @@ func (l Link) WithTitleLang(lang language.Tag) Link {
 	return l
 }
 
+func (l Link) WithQueryVal(key, val string) Link {
+	u := l.target
+	q := u.Query()
+	q.Add(key, val)
+	u.RawQuery = q.Encode()
+	l.target = u
+	return l
+}
+
+func (l Link) WithQuery(q url.Values) Link {
+	u := l.target
+	u.RawQuery = q.Encode()
+	l.target = u
+	return l
+}
+
 func (l Link) String() string {
 	return l.stringWithSeparator("; ")
+}
+
+func (l Link) IsZero() bool {
+	return l.target == (url.URL{})
 }
 
 func (l Link) MarshalBinary() ([]byte, error) {
@@ -208,6 +228,29 @@ func (links Links) String() string {
 			b.WriteString(", ")
 		}
 		b.WriteString(link.String())
+	}
+	return b.String()
+}
+
+// stops before exceeding maxBytes
+func (links Links) StringUpTo(maxBytes int) string {
+	var b strings.Builder
+	if b.Cap() < maxBytes {
+		b.Grow(maxBytes - b.Cap() + 1)
+	}
+	for i, link := range links {
+		s := link.String()
+		sepLen := 0
+		if i > 0 {
+			sepLen = 2 // ", "
+		}
+		if b.Len()+sepLen+len(s) > maxBytes {
+			break
+		}
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(s)
 	}
 	return b.String()
 }

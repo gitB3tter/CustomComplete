@@ -3,24 +3,38 @@ package transport
 import (
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
-	"customcomplete/internal/ui"
 	"customcomplete/internal/weblinking"
 	"fmt"
 	"maps"
 	"net/http"
-	"net/url"
 	"slices"
-	"strconv"
 	"time"
 
 	"golang.org/x/text/language"
 )
 
+func newCacheContent(b []byte, typ mediatypes.Type) PrebakedContent {
+	return PrebakedContent{
+		body:          b,
+		etag:          GetEtagStrongBytes(b),
+		contentLength: len(b),
+		contentType:   typ,
+	}
+}
+
 type PrebakedContent struct {
 	body          []byte
 	etag          ETagStrong
 	contentLength int
-	contentType   string
+	contentType   mediatypes.Type
+}
+
+func NewCache(path weblinking.Path, escape map[language.Tag]weblinking.Link, links map[language.Tag]weblinking.Links) (cache PrebakedCache) {
+	cache.path = path
+	cache.escape = escape
+	cache.links = links
+	cache.content = make(map[mediatypes.Type]map[language.Tag]PrebakedContent)
+	return
 }
 
 type PrebakedCache struct {
@@ -28,33 +42,15 @@ type PrebakedCache struct {
 	links          map[language.Tag]weblinking.Links
 	escape         map[language.Tag]weblinking.Link
 	supportedTypes mediatypes.Types
-	url            *url.URL
+	path           weblinking.Path
 }
 
-func New(url *url.URL, escape map[language.Tag]weblinking.Link, links map[language.Tag]weblinking.Links) (cache PrebakedCache) {
-	cache.url = url
-	cache.escape = escape
-	cache.links = make(map[language.Tag]weblinking.Links)
-	cache.links = links
-	cache.content = make(map[mediatypes.Type]map[language.Tag]PrebakedContent)
-	return
+func (cache PrebakedCache) With(typ mediatypes.Type, output map[language.Tag][]byte) PrebakedCache {
+	cache = cache.add(output, typ)
+	return cache
 }
 
-func (cache PrebakedCache) With(
-	typ mediatypes.Type,
-	baseTemplates *ui.BaseTemplates,
-	templates []string,
-	data map[language.Tag]any) (PrebakedCache, error) {
-
-	bakedGood, err := baseTemplates.Prebake(typ, templates, data)
-	if err != nil {
-		return PrebakedCache{}, fmt.Errorf("Failed to prebake for type %s: %w", typ.String(), err)
-	}
-	cache = cache.add(bakedGood, typ)
-	return cache, nil
-}
-
-func (cache PrebakedCache) WithLinkset(links map[language.Tag]weblinking.Links, supportedTypes ...mediatypes.Type) (PrebakedCache, error) {
+func (cache PrebakedCache) WithLinkset(links map[language.Tag]weblinking.Links) (PrebakedCache, error) {
 
 	cache.content[mediatypes.Linkset] = make(map[language.Tag]PrebakedContent)
 	cache.content[mediatypes.LinksetJSON] = make(map[language.Tag]PrebakedContent)
@@ -68,9 +64,8 @@ func (cache PrebakedCache) WithLinkset(links map[language.Tag]weblinking.Links, 
 			body:          b,
 			etag:          etag,
 			contentLength: len(b),
-			contentType:   mediatypes.Linkset.String(),
+			contentType:   mediatypes.Linkset,
 		}
-		cache.supportedTypes = append(cache.supportedTypes, mediatypes.Linkset)
 		b, err = links[langTag].MarshalJSON()
 		if err != nil {
 			return PrebakedCache{}, err
@@ -83,10 +78,10 @@ func (cache PrebakedCache) WithLinkset(links map[language.Tag]weblinking.Links, 
 			body:          b,
 			etag:          etag,
 			contentLength: len(b),
-			contentType:   mediatypes.LinksetJSON.String(),
+			contentType:   mediatypes.LinksetJSON,
 		}
-		cache.supportedTypes = append(cache.supportedTypes, mediatypes.LinksetJSON)
 	}
+	cache.supportedTypes = append(cache.supportedTypes, mediatypes.Linkset, mediatypes.LinksetJSON)
 	return cache, nil
 }
 
@@ -104,7 +99,7 @@ func (cache PrebakedCache) GetSize(typ mediatypes.Type, langTag language.Tag) (i
 
 func (cache PrebakedCache) RegisterOn(mux *http.ServeMux, pattern string) {
 	if pattern == "" {
-		pattern = cache.url.String()
+		pattern = cache.path.String()
 	}
 	mux.Handle("GET "+pattern, NoBody(cache.get))
 	mux.Handle("OPTIONS "+pattern, NoBody(cache.options))
@@ -114,7 +109,7 @@ func (cache PrebakedCache) options(w http.ResponseWriter, r *http.Request) {
 	langTag := i18n.LangTagFromContext(r.Context())
 	w.Header().Set("Link", append(
 		slices.Clone(cache.links[langTag]),
-		weblinking.AllAlternates(cache.url, cache.supportedTypes...)...,
+		weblinking.AllAlternates(cache.path, cache.supportedTypes...)...,
 	).String())
 
 	w.Header().Set("Allow", "GET, HEAD, OPTIONS")
@@ -141,7 +136,7 @@ func (cache PrebakedCache) get(w http.ResponseWriter, r *http.Request) {
 	SetCachePublic(w.Header(), time.Hour, time.Hour*24)
 	w.Header().Set("Link", append(
 		slices.Clone(cache.links[langTag]),
-		weblinking.Alternates(cache.url, langTag, responseType, cache.supportedTypes...)...,
+		weblinking.Alternates(cache.path, langTag, responseType, cache.supportedTypes...)...,
 	).String())
 	content.ServeHTTP(w, r)
 }
@@ -152,20 +147,13 @@ func (p PrebakedContent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	w.Header().Set("Content-Type", p.contentType)
-	w.Header().Set("Content-Length", strconv.Itoa(p.contentLength))
-	Write(r.Context(), w, p.body)
+	Write(r.Context(), w, p.body, p.contentType, http.StatusOK)
 }
 
 func (cache PrebakedCache) add(bakedGood map[language.Tag][]byte, typ mediatypes.Type) PrebakedCache {
 	cache.content[typ] = make(map[language.Tag]PrebakedContent)
 	for lang, b := range bakedGood {
-		cache.content[typ][lang] = PrebakedContent{
-			body:          b,
-			etag:          GetEtagStrongBytes(b),
-			contentLength: len(b),
-			contentType:   typ.String(),
-		}
+		cache.content[typ][lang] = newCacheContent(b, typ)
 	}
 	cache.supportedTypes = append(cache.supportedTypes, typ)
 	return cache

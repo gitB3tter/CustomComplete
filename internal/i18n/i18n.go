@@ -63,10 +63,10 @@ func LangTagFromContext(ctx context.Context) language.Tag {
 	}
 }
 
-func Translate(lang language.Tag, key Key, args ...any) string {
+func Translate(langTag language.Tag, key Key, args ...any) string {
 	var out string
 
-	if dict, ok := Translations[lang]; ok {
+	if dict, ok := Translations[langTag]; ok {
 		if val, ok := dict[key]; ok {
 			out = val
 		}

@@ -1,114 +1,102 @@
 package texts
 
 import (
+	"cmp"
 	"customcomplete/internal/catalog"
 	"customcomplete/internal/errs"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
 	"customcomplete/internal/transport"
 	"customcomplete/internal/ui"
-	"errors"
 	"net/http"
 	"net/url"
 )
 
 func (h *handler) registerDelete(mux *http.ServeMux) {
 	mux.Handle("POST /texts/{textID}/delete",
-		transport.LimitBody(h.delete, mediatypes.Types{mediatypes.URLEncoded}, 256))
+		transport.LimitBody(
+			h.delete,
+			mediatypes.Types{mediatypes.URLEncoded},
+			256,
+		),
+	)
 	mux.Handle("DELETE /texts/{textID}",
-		transport.NoBody(h.delete))
+		transport.NoBody(h.delete),
+	)
 }
 
 func (h *handler) delete(w http.ResponseWriter, r *http.Request) {
-	id, ok := catalog.ParseDocumentIDFromString(r.PathValue("textID"))
-	if !ok {
-		respondNotFound(w, r)
-		return
-	}
 
-	doc, err := h.service.GetDocument(id)
-	if err != nil {
-		var errWithCode *errs.CodedError
-		if errors.As(err, &errWithCode) && errWithCode.Code() == errs.CodeNotFound {
-			respondNotFound(w, r)
-		} else {
-			respondInternalError(w, r, err)
-		}
-		return
-	}
-
-	var ETagStrong transport.ETagStrong
-	var proceed bool
-	if ETagStrong, proceed = itemEtagStrongOr500(w, r, id, doc); !proceed {
+	docID, doc, proceed := h.getDocOrRespond(w, r)
+	if !proceed {
 		return
 	}
 
 	langTag := i18n.LangTagFromContext(r.Context())
 
-	var errPreconditon *transport.ErrorPrecondition
-
-	if errPreconditon = transport.Precondition(ETagStrong, r.FormValue(ui.HiddenFieldEtag), langTag); errPreconditon != nil {
-		errPreconditon = transport.Precondition(ETagStrong, r.Header.Get("If-Match"), langTag)
-	}
-
-	if errPreconditon != nil {
-		h.failPrecondition(w, r, id, doc, *errPreconditon, ETagStrong)
+	etagStrong := itemETagStrong(doc)
+	if errPrecondition := transport.Precondition(etagStrong, cmp.Or(r.FormValue(ui.HiddenFieldEtag), r.Header.Get("If-Match")), langTag); errPrecondition != nil {
+		h.respondDeleteErrors(w, r, docID, doc, *errPrecondition, etagStrong)
 		return
 	}
 
-	if err = h.service.DeleteDocument(id); err == nil {
-		if transport.IsFullDocumentNavigation(r) {
-			http.SetCookie(w, &http.Cookie{
-				Name:   string(flashDeleted),
-				Value:  url.QueryEscape(string(doc.Name)),
-				MaxAge: 60,
-				Path:   collectionPath().String(),
-			})
-			transport.AddVaryOnce(w.Header(), "Accept")
-			transport.SeeOther(w, r, collectionPath(), i18n.Func(langTag)(i18n.TextDeleteFlashSuccess, doc.Name))
+	if err := h.service.DeleteDocument(docID); err != nil {
+		if errs.HasCode(err, errs.CodeNotFound) {
+			respondNotFound(w, r)
 			return
 		}
-		w.Header().Set("Link", collectionLink(langTag).String())
-		w.Header().Del("Vary")
-		w.Header().Del("Content-Language")
-		w.WriteHeader(http.StatusNoContent)
+		respondInternalErrorSubresource(w, r, err, docID, doc.Name)
 		return
 	}
 
-	var errWithCode *errs.CodedError
-	if errors.As(err, &errWithCode) && errWithCode.Code() == errs.CodeNotFound {
-		respondNotFound(w, r)
+	if transport.IsFullDocumentNavigation(r) {
+		http.SetCookie(w, &http.Cookie{
+			Name:   string(flashDeleted),
+			Value:  url.QueryEscape(string(doc.Name)),
+			MaxAge: 60,
+			Path:   CollectionPath.URL().Path,
+		})
+		transport.AddVaryOnce(w.Header(), "Accept")
+		transport.SeeOther(w, r, CollectionPath, i18n.Func(langTag)(i18n.TextDeleteFlashSuccess, doc.Name))
 		return
 	}
-
-	respondInternalErrorSubresource(w, r, err, id, doc.Name)
+	w.Header().Set("Link", collectionLink(langTag).String())
+	w.Header().Del("Vary")
+	w.Header().Del("Content-Language")
+	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *handler) failPrecondition(w http.ResponseWriter, r *http.Request, docID catalog.DocumentID, doc catalog.Document, errPrecondition transport.ErrorPrecondition, ETagStrong transport.ETagStrong) {
+func (h *handler) respondDeleteErrors(w http.ResponseWriter, r *http.Request, docID catalog.DocumentID, doc catalog.Document, errPrecondition transport.ErrorPrecondition, etagStrong transport.ETagStrong) {
 
-	T := i18n.TranslateFuncFromContext(r.Context())
+	langTag := i18n.LangTagFromContext(r.Context())
+	T := i18n.Func(langTag)
 
 	if transport.IsFullDocumentNavigation(r) {
 		http.SetCookie(w, &http.Cookie{
 			Name:   errPrecondition.CustomMessage(string(flashDeletePreconditionFailed), string(flashDeleteNoPrecondition)),
 			MaxAge: 60,
-			Path:   itemPath(docID).String(),
+			Path:   TextsItemPath(docID).String(),
 		})
-		transport.SeeOther(w, r, itemPath(docID), errPrecondition.CustomMessage(T(i18n.TextDeletePrecondition), T(i18n.TextDeleteNoPrecondition)))
+		transport.SeeOther(w, r, TextsItemPath(docID), errPrecondition.CustomMessage(T(i18n.TextDeletePrecondition), T(i18n.TextDeleteNoPrecondition)))
 		return
 	}
 
-	errResponseType := transport.ResolveErrorContentType(r)
-	w.Header().Set("Content-Type", errResponseType.String())
+	responseType := transport.ResolveErrorContentType(r)
+	w.Header().Set("Content-Type", responseType.String())
+	transport.SetErrorHeaders(w.Header())
 
-	if errResponseType == mediatypes.HTML {
-		h.respondItemPreconditionHTML(w, r, docID, doc, &errPrecondition, ETagStrong)
-		return
-	}
+	var err error
 	var output []byte
-	switch errResponseType {
+	switch responseType {
+	case mediatypes.HTML:
+		output, err = h.bufferItemHTML(w, r, doc, docID, etagStrong, langTag, &errPrecondition)
+		if err != nil {
+			respondInternalErrorSubresource(w, r, err, docID, doc.Name)
+			return
+		}
+		writeItem(r.Context(), w, docID, doc, output, errPrecondition.Status(), langTag, mediatypes.HTML)
+		return
 	case mediatypes.JSON, mediatypes.ProblemJSON:
-		var err error
 		output, err = transport.ProblemGeneric(errPrecondition.Error())
 		if err != nil {
 			respondInternalErrorSubresource(w, r, err, docID, doc.Name)
@@ -118,6 +106,5 @@ func (h *handler) failPrecondition(w http.ResponseWriter, r *http.Request, docID
 		output = []byte(errPrecondition.Error())
 	}
 
-	w.WriteHeader(int(errPrecondition.Status()))
-	transport.Write(r.Context(), w, output)
+	transport.Write(r.Context(), w, output, responseType, int(errPrecondition.Status()))
 }

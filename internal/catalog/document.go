@@ -17,33 +17,29 @@ const (
 // > 0 (maybe put also as general/global/primitive constraint?)
 type DocumentID int64
 
-type DocumentName constraints.ShortString
-
-type DocumentFilename constraints.SafeFilename
-
 type Document struct {
-	Name      DocumentName
-	Filename  DocumentFilename
+	Name      constraints.Label
+	Filename  constraints.SafeFilename
 	Filesize  int64
 	WordCount int64
 	Status    SourceStatus
-	Hash      SourceContentHash
+	Hash      constraints.Sha256Hex
 }
 
 // id and label
 type DocumentRef struct {
 	ID   DocumentID
-	Name DocumentName
+	Name constraints.Label
 }
 
-func (service *Service) CreateDocument(name DocumentName, filename constraints.SafeFilename, contents SourceContents) (doc Document, id DocumentID, err error) {
+func (service *Service) CreateDocument(name constraints.Label, filename constraints.SafeFilename, contents SourceContents) (doc Document, id DocumentID, err error) {
 
 	var srcID sourceID
 
 	doc.Name = name
 	doc.Filesize = int64(len(contents))
-	doc.Hash = getSourceContenthash(contents)
-	doc.Filename = DocumentFilename(filename)
+	doc.Hash = constraints.NewSha256Hex(contents)
+	doc.Filename = filename
 
 	id, srcID, doc.Status, doc.WordCount, err = service.store.create(name, doc.Filename, doc.Hash, doc.Filesize, contents)
 	if err != nil {
@@ -62,7 +58,7 @@ func (service *Service) CreateDocument(name DocumentName, filename constraints.S
 }
 
 type DocumentPatchMetadata struct {
-	Name     *DocumentName
+	Name     *constraints.Label
 	Filename *constraints.SafeFilename
 }
 
@@ -75,7 +71,7 @@ func (service *Service) UpdateDocument(docID DocumentID, patch DocumentPatchMeta
 
 	var srcID sourceID
 
-	if doc, srcID, err = service.store.updateDocument(docID, patch, contents, getSourceContenthash(contents)); err != nil {
+	if doc, srcID, err = service.store.updateDocument(docID, patch, contents, constraints.NewSha256Hex(contents)); err != nil {
 		return
 	}
 
@@ -97,7 +93,7 @@ func (service *Service) PatchDocumentMetadata(id DocumentID, patch DocumentPatch
 	return service.store.patchDocumentMetadata(id, patch)
 }
 
-func (service *Service) GetRefs() ([]DocumentRef, error) {
+func (service *Service) GetDocumentRefs() ([]DocumentRef, error) {
 	return service.store.getDocumentRefs()
 }
 
@@ -113,7 +109,7 @@ func (service *Service) GetDocumentProgressLatest(id DocumentID) (progress.Progr
 	}
 	latest, ok := service.broker.GetLatest(int64(sourceID))
 	if !ok {
-		return progress.Progress{}, errs.NotFound()
+		return progress.Progress{}, new(errs.NotFound())
 	}
 	return latest, nil
 }
@@ -149,12 +145,4 @@ func ParseDocumentIDFromString(str string) (DocumentID, bool) {
 		return 0, false
 	}
 	return DocumentID(numb), true
-}
-
-func ParseDocumentName(s string) (DocumentName, *errs.CodedError) {
-	shortStr, err := constraints.ParseShortString(s)
-	if err != nil {
-		return "", err
-	}
-	return DocumentName(shortStr), nil
 }

@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -176,17 +175,16 @@ func InternalError(w http.ResponseWriter, r *http.Request, err error, escape web
 }
 
 func InternalErrorGeneric(w http.ResponseWriter, r *http.Request, err error) {
-	InternalError(w, r, err, weblinking.New(weblinking.Up, (&url.URL{}).JoinPath("/")))
+	InternalError(w, r, err, weblinking.New(weblinking.Up, weblinking.RootPath))
 }
 
 // requires negotiated type to be html
-func SeeOther(w http.ResponseWriter, r *http.Request, location *url.URL, message string) {
+func SeeOther(w http.ResponseWriter, r *http.Request, location weblinking.Path, message string) {
 
 	ctx := r.Context()
 	langtag := i18n.LangTagFromContext(ctx)
 
 	w.Header().Set("Location", location.String())
-	w.Header().Set("Content-Type", mediatypes.HTML.String())
 
 	var err error
 	var body []byte
@@ -198,8 +196,7 @@ func SeeOther(w http.ResponseWriter, r *http.Request, location *url.URL, message
 		return
 	}
 
-	w.WriteHeader(http.StatusSeeOther)
-	Write(ctx, w, body)
+	Write(ctx, w, body, mediatypes.HTML, http.StatusSeeOther)
 }
 
 func BadRequest(w http.ResponseWriter, r *http.Request, detail string, escape weblinking.Link) {
@@ -274,7 +271,7 @@ func ContentTooLarge(w http.ResponseWriter, r *http.Request, limiFmt string, esc
 func BodyNotAllowed(w http.ResponseWriter, r *http.Request, langTag language.Tag) {
 	T := i18n.TranslateFuncFromContext(r.Context())
 
-	escapeHome := weblinking.New(weblinking.Up, &url.URL{Path: "/"}).WithTitle(T(i18n.NavigationHome))
+	escapeHome := weblinking.New(weblinking.Up, weblinking.RootPath).WithTitle(T(i18n.NavigationHome))
 
 	writeError(w, r,
 		http.StatusBadRequest,
@@ -299,7 +296,7 @@ func writeError(
 
 	h := w.Header()
 	SetErrorHeaders(h)
-	if escape.Target() != nil {
+	if !escape.IsZero() {
 		h.Add("Link", escape.String())
 	}
 
@@ -320,14 +317,20 @@ func writeError(
 		return
 	}
 
-	h.Set("Content-Type", responseType.String())
-	h.Set("Content-Length", strconv.Itoa(len(body)))
-	w.WriteHeader(status)
-	Write(ctx, w, body)
+	Write(ctx, w, body, responseType, status)
 }
 
-func Write(ctx context.Context, w http.ResponseWriter, b []byte) {
-	if _, err := w.Write(b); err != nil {
+func Write(ctx context.Context, w http.ResponseWriter, output []byte, responseType mediatypes.Type, status int) {
+	w.Header().Set("Content-Type", responseType.String())
+	w.Header().Set("Content-Length", strconv.Itoa(len(output)))
+	w.WriteHeader(status)
+	if _, err := w.Write(output); err != nil {
 		slog.WarnContext(ctx, "could not write")
 	}
+}
+
+func WriteNoBody(ctx context.Context, w http.ResponseWriter, status int) {
+	w.Header().Del("Content-Type")
+	w.Header().Del("Content-Language")
+	w.WriteHeader(status)
 }

@@ -1,6 +1,7 @@
 package errs
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -27,7 +28,6 @@ const (
 
 	//extension
 
-	//resource-level
 	CodeNotFound Code = "notFound"
 
 	//params
@@ -41,10 +41,20 @@ const (
 
 	//rules
 	RuleNotBlank = "notBlank"
-	RuleReserved = "reserved"
 )
 
 type Code string
+
+type Codes []Code
+
+func (codes Codes) toAny() (out []any) {
+	out = make([]any, 0, len(codes))
+	for _, code := range codes {
+		out = append(out, code)
+	}
+	return
+}
+
 type param string
 type Params map[param]any
 
@@ -81,12 +91,9 @@ func (e *CodedError) Error() string {
 	return string(e.c)
 }
 
-func (e *CodedError) Is(target error) bool {
-	x, ok := target.(interface{ Code() Code })
-	if !ok {
-		return false
-	}
-	return x.Code() == e.c
+func HasCode(err error, code Code) bool {
+	coded, ok := errors.AsType[*CodedError](err)
+	return ok && coded.Code() == code
 }
 
 func (e *CodedError) Code() Code {

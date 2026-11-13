@@ -36,6 +36,8 @@ var (
 
 	Linkset = must(ParseMediaType("application/linkset"))
 
+	FormUrlEncoded = must(ParseMediaType("application/x-www-form-urlencoded"))
+
 	MultipartForm = must(ParseMediaType("multipart/form-data"))
 
 	TextEventStream = must(ParseMediaType("text/event-stream"))

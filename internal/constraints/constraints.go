@@ -1,7 +1,10 @@
 package constraints
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"customcomplete/internal/errs"
+	"encoding/hex"
 	"errors"
 	"regexp"
 	"strings"
@@ -15,71 +18,65 @@ import (
 type NonEmptyString string
 
 // not empty when whitespace trimmed
-type NonBlankString string
+type NotBlank string
 
 // useable as identifier in lists
-type ShortString NonBlankString
+type Label NotBlank
 
-// pattern `^[a-z0-9]+(-[a-z0-9]+)*$`, min. 5 codepoints, max 50 bytes, no reserved (windows) names
-type SafeFilename NonBlankString
+// pattern `^[a-z0-9]+(-[a-z0-9]+)*$`,
+// min. 5 codepoints (benefit: no reserved windows names (since all len < 5)),
+// max 50 bytes (=> codepoints since only ascii)
+type SafeFilename NotBlank
 
 const (
-	ShortStringMaxCodePoints  = 100
-	safeFileNameMinCodePoints = 5
-	safeFileNameMaxBytes      = 50
-	safeFileNameFallback      = "untitled"
-	SafeFilenamePattern       = `^[a-z0-9]+(-[a-z0-9]+)*$`
+	ShortStringMaxCodePoints        = 100
+	safeFileNameMinCodePoints       = 5
+	safeFileNameMaxBytes            = 50
+	safeFileNameFallback            = "untitled"
+	SafeFilenamePattern             = `^[a-z0-9]+(-[a-z0-9]+)*$`
+	MaxFileSizeMB             int64 = 10
+	MaxFileSize               int64 = MaxFileSizeMB * 1_000_000
 )
 
 var SafeFilenameRegex = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
-
-// reserved names (windows)
-var filenameReserved = map[string]bool{
-	"con": true, "prn": true, "aux": true, "nul": true,
-	"com1": true, "com2": true, "com3": true, "com4": true,
-	"com5": true, "com6": true, "com7": true, "com8": true,
-	"com9": true, "lpt1": true, "lpt2": true, "lpt3": true,
-	"lpt4": true, "lpt5": true, "lpt6": true, "lpt7": true,
-	"lpt8": true, "lpt9": true,
-}
 
 // Unicode Code Points/Runes, js [...s].length
 func codePoints(s string) int {
 	return utf8.RuneCountInString(s)
 }
 
-func ParseNonEmptyString(s string) (NonEmptyString, error) {
+func ParseNonEmptyString(s string) (NonEmptyString, *errs.CodedError) {
 	if s == "" {
-		return "", errs.Required()
+		return "", new(errs.Required())
 	}
 	return NonEmptyString(s), nil
 }
 
-func ParseNonBlankString(s string) (NonBlankString, *errs.CodedError) {
+func ParseNonBlankString(s string) (NotBlank, *errs.CodedError) {
 	if strings.TrimSpace(s) == "" {
-		return "", errs.Blank()
+		return "", new(errs.Blank())
 	}
-	return NonBlankString(s), nil
+	return NotBlank(s), nil
 }
 
-func ParseShortString(s string) (ShortString, *errs.CodedError) {
+func ParseLabel(s string) (Label, *errs.CodedError) {
 	nonemptyStr, err := ParseNonBlankString(s)
 	if err != nil {
 		return "", err
 	}
 	length := codePoints(string(nonemptyStr))
 	if length > ShortStringMaxCodePoints {
-		return "", errs.MaxCodePoints(ShortStringMaxCodePoints, length)
+		return "", new(errs.MaxCodePoints(ShortStringMaxCodePoints, length))
 	}
-	return ShortString(nonemptyStr), nil
+	return Label(nonemptyStr), nil
 }
 
-func ParseSafeFilename(str string) (SafeFilename, error) {
+func ParseSafeFilename(str string) (SafeFilename, *errs.CodedError) {
 	safeFileName, err := parseSafeFilename(str)
 	if err != nil {
 		if coded, ok := errors.AsType[*errs.CodedError](err); ok && coded.Code() == errs.CodePattern {
 			if canonical, err := parseSafeFilename(canonicalise(str)); err == nil {
-				return "", errs.PatternWithCanonical(SafeFilenamePattern, string(canonical))
+				return "", new(errs.PatternWithCanonical(SafeFilenamePattern, string(canonical)))
 			}
 		}
 		return "", err
@@ -87,30 +84,22 @@ func ParseSafeFilename(str string) (SafeFilename, error) {
 	return safeFileName, nil
 }
 
-func parseSafeFilename(str string) (SafeFilename, error) {
+func parseSafeFilename(str string) (SafeFilename, *errs.CodedError) {
 
 	if n := codePoints(str); n < safeFileNameMinCodePoints {
-		return "", errs.MinCodePoints(safeFileNameMinCodePoints, n)
+		return "", new(errs.MinCodePoints(safeFileNameMinCodePoints, n))
 	}
 
 	if !utf8.ValidString(str) {
-		return "", errs.InvalidUTF8()
+		return "", new(errs.InvalidUTF8())
 	}
 
 	if len(str) > safeFileNameMaxBytes {
-		return "", errs.MaxBytes(safeFileNameMaxBytes)
+		return "", new(errs.MaxBytes(safeFileNameMaxBytes))
 	}
 
 	if !SafeFilenameRegex.MatchString(str) {
-		return "", errs.Pattern(SafeFilenamePattern)
-	}
-
-	if filenameReserved[str] {
-		return "", errs.Invalid(errs.Params{errs.ParamRule: errs.RuleReserved})
-	}
-
-	if n := codePoints(str); n < safeFileNameMinCodePoints {
-		return "", errs.MinCodePoints(safeFileNameMinCodePoints, n)
+		return "", new(errs.Pattern(SafeFilenamePattern))
 	}
 
 	return SafeFilename(str), nil
@@ -193,4 +182,45 @@ func FirstBytes(s string, limit int) string {
 		end--
 	}
 	return strings.Clone(s[:end])
+}
+
+type Sha256Hex string
+
+func NewSha256Hex(contents []byte) Sha256Hex {
+	//dont destroy/corrupt the passed in contents
+	trimmed := bytes.TrimSpace(contents)
+	workingCopy := make([]byte, len(trimmed))
+	copy(workingCopy, trimmed)
+	hashArray := sha256.Sum256(collapseSpace(norm.NFC.Bytes(workingCopy)))
+	return Sha256Hex(hex.EncodeToString(hashArray[:]))
+}
+
+// Collapses consecutive whitespace (spaces, tabs, newlines) into a single space in-place.
+func collapseSpace(b []byte) []byte {
+	n := 0
+	lastWasSpace := false
+	for _, v := range b {
+		isSpace := v == ' ' || v == '\n' || v == '\t' || v == '\r'
+		if isSpace {
+			if !lastWasSpace {
+				b[n] = ' '
+				n++
+			}
+			lastWasSpace = true
+		} else {
+			b[n] = v
+			n++
+			lastWasSpace = false
+		}
+	}
+	return b[:n]
+}
+
+type FileContents []byte
+
+func ParseFileContents(contents []byte) (FileContents, *errs.CodedError) {
+	if len(contents) > int(MaxFileSize) {
+		return nil, new(errs.MaxBytes(MaxFileSize))
+	}
+	return FileContents(contents), nil
 }

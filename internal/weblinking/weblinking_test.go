@@ -2,7 +2,6 @@ package weblinking
 
 import (
 	"encoding/json"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -10,10 +9,10 @@ import (
 )
 
 func TestWebLinking(t *testing.T) {
-	target := (&url.URL{Path: "/texts"}).JoinPath("1")
+	path := RootPath.Join("texts", "1")
 
 	t.Run("ASCII title", func(t *testing.T) {
-		l := New(Item, target).
+		l := New(Item, path).
 			WithTitle("Works of Shakespeare")
 
 		got := l.String()
@@ -23,7 +22,7 @@ func TestWebLinking(t *testing.T) {
 	})
 
 	t.Run("UTF-8 non-ASCII title + title language", func(t *testing.T) {
-		l := New(Up, &url.URL{Path: "/suggestions"}).
+		l := New(Up, RootPath.Join("suggestions")).
 			WithTitle("Vorschläge").
 			WithTitleLang(language.German)
 
@@ -35,9 +34,13 @@ func TestWebLinking(t *testing.T) {
 
 	t.Run("RFC 9264 application/linkset+json structure", func(t *testing.T) {
 		links := Links{
-			New(Self, &url.URL{Path: "/suggestions"}),
-			New(Next, &url.URL{Path: "/suggestions", RawQuery: "text=to+be+"}).WithTitle("be"),
-			New(Next, &url.URL{Path: "/suggestions", RawQuery: "text=to+crack+"}).WithTitle("crack"),
+			New(Self, RootPath.Join("suggestions")),
+			New(Next, RootPath.Join("suggestions")).
+				WithQueryVal("text", "to be ").
+				WithTitle("be"),
+			New(Next, RootPath.Join("suggestions")).
+				WithQueryVal("text", "to crack ").
+				WithTitle("crack"),
 		}
 
 		raw, err := json.Marshal(links)

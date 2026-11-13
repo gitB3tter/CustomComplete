@@ -8,9 +8,7 @@ import (
 )
 
 const (
-	MinWordsContents int   = 2
-	MaxFileSizeMB    int64 = 10
-	MaxFileSize      int64 = MaxFileSizeMB * 1_000_000
+	MinWordsContents int = 2
 )
 
 var (

@@ -4,6 +4,7 @@ import (
 	"customcomplete/internal/catalog"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/ui"
+	"customcomplete/internal/weblinking"
 	_ "embed"
 	"fmt"
 	"html/template"
@@ -45,13 +46,13 @@ type handler struct {
 func (h *handler) Register(mux *http.ServeMux) {
 
 	h.registerCollection(mux)
-	h.registerNew(mux)
+	h.registerCreateForm(mux)
 	h.registerCreate(mux)
-	h.registerDetail(mux)
-	h.registerEdit(mux)
+	h.registerItem(mux)
+	h.registerEditForm(mux)
 	h.registerUpdate(mux)
 	h.registerDelete(mux)
-	h.registerConfirmDelete(mux)
+	h.registerDeleteForm(mux)
 	h.registerStatus(mux)
 	h.registerFile(mux)
 
@@ -89,7 +90,7 @@ func NewHandler(service *catalog.Service, baseTemplates *ui.BaseTemplates) (h *h
 	return h, nil
 }
 
-func consumeFlash(w http.ResponseWriter, r *http.Request, path *url.URL, names ...flashName) (flash string) {
+func consumeFlash(w http.ResponseWriter, r *http.Request, path weblinking.Path, names ...flashName) (flash string) {
 	T := i18n.TranslateFuncFromContext(r.Context())
 	for _, cookie := range r.Cookies() {
 		if slices.ContainsFunc(names, func(n flashName) bool { return string(n) == cookie.Name }) {

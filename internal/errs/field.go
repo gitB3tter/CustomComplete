@@ -4,65 +4,56 @@ import (
 	"strings"
 )
 
-// cause + field/param/name
 type FieldError struct {
-	Name string
-	*CodedError
+	Name   string `json:"name"`
+	Code   Code   `json:"code"`
+	Params Params `json:"params,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }
 
-func FieldFromCoded(name string, coded *CodedError) *FieldError {
-	return &FieldError{
-		Name:       name,
-		CodedError: coded,
+func InvalidParamFromCodedError(name string, errCoded CodedError, reason string) FieldError {
+	return FieldError{
+		Name:   name,
+		Code:   errCoded.Code(),
+		Params: errCoded.Params(),
+		Reason: reason,
 	}
 }
 
-func (e *FieldError) Error() string {
-	return "field=" + e.Name + " error=" + e.Coded().Error()
-}
-
-func (e *FieldError) Unwrap() error {
-	return e.CodedError
-}
-
-func (e *FieldError) Coded() *CodedError {
-	return e.CodedError
-}
-
-type FieldErrors struct {
-	errs []*FieldError
-}
-
-func (e *FieldErrors) Error() string {
+func (errField *FieldError) String() string {
 	var b strings.Builder
-	b.WriteString("field_errors=[")
-
-	for i := range e.errs {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-
-		b.WriteByte('{')
-		b.WriteString(e.errs[i].Error())
-		b.WriteByte('}')
-	}
-
+	b.WriteString(errField.Name)
+	b.WriteString(": ")
+	b.WriteString(errField.Reason)
+	b.WriteString(" [")
+	b.WriteString(string(errField.Code))
+	b.WriteByte(' ')
+	b.WriteString(errField.Params.String())
 	b.WriteByte(']')
 	return b.String()
 }
 
-func (e *FieldErrors) Errors() []*FieldError {
-	return e.errs
+func (errField *FieldError) Error() string {
+	return errField.String()
 }
 
-func (e *FieldErrors) Add(name string, err *CodedError) {
-	e.errs = append(e.errs, &FieldError{Name: name, CodedError: err})
+type FieldErrors []FieldError
+
+func (errsField *FieldErrors) AddCoded(name string, errCoded CodedError, reason string) {
+	*errsField = append(*errsField, InvalidParamFromCodedError(name, errCoded, reason))
 }
 
-func (e *FieldErrors) Append(errs ...*FieldError) {
-	e.errs = append(e.errs, errs...)
+func (errsField *FieldErrors) String() string {
+	return errsField.Error()
 }
-
-func (e *FieldErrors) OK() bool {
-	return len(e.errs) == 0
+func (errsField *FieldErrors) Error() string {
+	var b strings.Builder
+	for i, iParam := range *errsField {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString("- ")
+		b.WriteString(iParam.String())
+	}
+	return b.String()
 }

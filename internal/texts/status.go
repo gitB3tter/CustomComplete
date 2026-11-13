@@ -3,10 +3,10 @@ package texts
 import (
 	"context"
 	"customcomplete/internal/catalog"
-	"customcomplete/internal/docs"
 	"customcomplete/internal/errs"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
+	"customcomplete/internal/schema"
 	"customcomplete/internal/transport"
 	"customcomplete/internal/ui"
 	"customcomplete/internal/weblinking"
@@ -16,9 +16,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
+
+	"golang.org/x/text/language"
 )
 
 var (
@@ -27,6 +28,7 @@ var (
 	templateStatusHTML string
 	//go:embed partials/status.html
 	templateStatusPartialsHTML string
+	StatusSchemaPath           weblinking.Path = ItemSchemaPath.Join("status")
 )
 
 type StatusSnapshot struct {
@@ -37,6 +39,44 @@ type StatusSnapshot struct {
 type StatusData struct {
 	Status  catalog.SourceStatus `json:"status"`
 	Message string               `json:"message"`
+}
+
+func StatusSchema(langTag language.Tag) schema.Root {
+	T := i18n.Func(langTag)
+
+	required := map[string]schema.Schema{
+		"status": schema.Schema{Type: schema.String}.
+			WithEnum(
+				catalog.StatusPending,
+				catalog.StatusProcessing,
+				catalog.StatusComplete,
+				catalog.StatusFailed,
+			),
+		"message": schema.Schema{Type: schema.String}.
+			WithExamples(
+				T(i18n.TextStatusPending),
+				T(i18n.TextStatusProcessing),
+				T(i18n.TextStatusComplete),
+				T(i18n.TextStatusFailed),
+			),
+	}
+
+	optional := map[string]schema.Schema{
+		"progress": schema.New(schema.Integer).
+			WithMinimum(0).
+			WithMaximum(100),
+		"stage": schema.New(schema.String).
+			WithExamples(
+				T(i18n.ProcessingReadingText),
+				T(i18n.ProcessingCounting),
+				T(i18n.ProcessingPreparingSuggestions),
+				T(i18n.ProcessingSavingSuggestions),
+			),
+	}
+
+	return schema.NewRoot(StatusSchemaPath, required).
+		WithTitle(T(i18n.NavigationTextStatus, T(i18n.DocsSpecsExampleTextName))).
+		WithOptional(optional)
 }
 
 type ProgressData struct {
@@ -51,8 +91,12 @@ func newStatusData(Status catalog.SourceStatus, Message string) StatusData {
 	}
 }
 
+func TextsStatusPath(docID catalog.DocumentID) weblinking.Path {
+	return TextsItemPath(docID).Join("status")
+}
+
 func (h *handler) registerStatus(mux *http.ServeMux) {
-	mux.Handle("GET /texts/{id}/status",
+	mux.Handle("GET /texts/{textID}/status",
 		transport.NoBody(h.status))
 }
 
@@ -65,30 +109,27 @@ func (h *handler) status(w http.ResponseWriter, r *http.Request) {
 
 	langTag := i18n.LangTagFromContext(r.Context())
 
-	negotiated, ok := transport.NegotiateOr406(w, r, collectionLink(langTag), supportedMediaTypesStatus)
+	responseType, ok := transport.NegotiateOr406(w, r, collectionLink(langTag), supportedMediaTypesStatus)
 	if !ok {
 		return
 	}
-
 	ctx := r.Context()
 
-	T := i18n.Func(langTag)
-
-	docID, doc, proceed := h.getDocOrRespond(w, r, r.PathValue("id"))
+	docID, doc, proceed := h.getDocOrRespond(w, r)
 	if !proceed {
 		return
 	}
 
-	itemLinkAbout := weblinking.New(weblinking.About, itemPath(docID)).WithTitle(string(doc.Name))
+	T := i18n.Func(langTag)
 
 	//no more progress events updates
-	if (doc.Status == catalog.StatusComplete || doc.Status == catalog.StatusFailed) && negotiated == mediatypes.TextEventStream {
-		w.Header().Set("Link", itemLinkAbout.String())
+	if (doc.Status == catalog.StatusComplete || doc.Status == catalog.StatusFailed) && responseType == mediatypes.TextEventStream {
+		w.Header().Set("Link", itemLinkAbout(docID, doc.Name).String())
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	switch negotiated {
+	switch responseType {
 	case mediatypes.HTML:
 		output, err := ui.BufferHTML(h.statusTemplate[langTag], struct {
 			Base ui.BaseDataHTML
@@ -101,8 +142,8 @@ func (h *handler) status(w http.ResponseWriter, r *http.Request) {
 				MetaDescription: T(i18n.TextStatusMetaDescription, doc.Name),
 				Lang:            langTag,
 				NoIndex:         true,
-				Back:            itemLinkAbout,
-				Links:           weblinking.Links{itemLinkAbout},
+				Back:            itemLinkAbout(docID, doc.Name),
+				Links:           weblinking.Links{itemLinkAbout(docID, doc.Name)},
 			},
 			itemData: newItemData(doc),
 			Status:   newStatusData(doc.Status, getStatusTranslation(doc.Status, langTag)),
@@ -112,27 +153,22 @@ func (h *handler) status(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		transport.SetDontCache(w.Header())
-		w.Header().Set("Link", itemLinkAbout.String())
-		w.Header().Set("Content-Type", mediatypes.HTML.String())
-		transport.Write(r.Context(), w, output)
+		w.Header().Set("Link", itemLinkAbout(docID, doc.Name).String())
+		transport.Write(r.Context(), w, output, responseType, http.StatusOK)
 		return
 	case mediatypes.JSON:
-		progress, err := h.service.GetDocumentProgressLatest(docID)
-		var coded *errs.CodedError
-		if err != nil && (!errors.As(err, &coded) || coded.Code() != errs.CodeNotFound) {
-			transport.InternalError(w, r, err, itemLinkUp(docID, doc.Name))
-			return
-		}
-		progressFound := err == nil
 		snapshot := StatusSnapshot{
 			StatusData: StatusData{
 				Status:  doc.Status,
 				Message: getStatusTranslation(doc.Status, langTag),
 			},
 		}
-		if progressFound {
+		if progress, err := h.service.GetDocumentProgressLatest(docID); err == nil {
 			snapshot.Progress = progress.Percentage
 			snapshot.Stage = T(progress.Message, progress.ArgsMessage...)
+		} else if !errs.HasCode(err, errs.CodeNotFound) {
+			transport.InternalError(w, r, err, itemLinkUp(docID, doc.Name))
+			return
 		}
 		body, err := json.Marshal(snapshot)
 		if err != nil {
@@ -141,13 +177,11 @@ func (h *handler) status(w http.ResponseWriter, r *http.Request) {
 		}
 		transport.SetDontCache(w.Header())
 		w.Header().Set("Link", weblinking.Links{
-			itemLinkAbout,
-			weblinking.New(weblinking.DescribedBy, (&url.URL{Path: "/"}).JoinPath(string(docs.SchemaTextsItemStatus))),
+			itemLinkAbout(docID, doc.Name),
+			weblinking.New(weblinking.DescribedBy, StatusSchemaPath),
 		}.String())
-		w.Header().Set("Content-Type", mediatypes.JSON.String())
-		transport.Write(ctx, w, body)
+		transport.Write(ctx, w, body, responseType, http.StatusOK)
 		return
-
 	}
 
 	updates, latest, hasLatest, unsub, err := h.service.SubscribeDocumentProgress(docID)
@@ -159,8 +193,7 @@ func (h *handler) status(w http.ResponseWriter, r *http.Request) {
 	rc := http.NewResponseController(w)
 
 	if err := rc.SetWriteDeadline(time.Now().Add(3 * time.Minute)); err != nil {
-		http.Error(w, "SSE not supported", http.StatusInternalServerError)
-		transport.InternalError(w, r, err, itemLinkAbout)
+		transport.InternalError(w, r, err, itemLinkAbout(docID, doc.Name))
 		return
 	}
 
@@ -183,10 +216,10 @@ func (h *handler) status(w http.ResponseWriter, r *http.Request) {
 	anounceProcessingDelayed := doc.Status == catalog.StatusPending
 	if !anounceProcessingDelayed {
 		buf = append(buf, "data: "...)
-		buf = append(buf, []byte(getStatusTranslation(catalog.StatusProcessing, langTag))...)
+		buf = append(buf, getStatusTranslation(catalog.StatusProcessing, langTag)...)
 		buf = append(buf, "\n\n"...)
 		buf = append(buf, "event: status\ndata: "...)
-		buf = append(buf, []byte(catalog.StatusProcessing)...)
+		buf = append(buf, catalog.StatusProcessing...)
 		buf = append(buf, "\n\n"...)
 		if _, err := w.Write(buf); err != nil {
 			return
@@ -197,8 +230,12 @@ func (h *handler) status(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if hasLatest {
-		fmt.Fprintf(w, "event: progress\ndata: %d\n\n", latest.Percentage)
-		fmt.Fprintf(w, "event: stage\ndata: %s\n\n", T(latest.Message, latest.ArgsMessage...))
+		buf = buf[:0]
+		buf = append(buf, "event: progress\ndata: "...)
+		buf = strconv.AppendInt(buf, int64(latest.Percentage), 10)
+		buf = append(buf, "\n\nevent: stage\ndata: "...)
+		buf = append(buf, T(latest.Message, latest.ArgsMessage...)...)
+		buf = append(buf, "\n\n"...)
 		lastPercentage = latest.Percentage
 		lastState = latest.Message
 		if _, err := w.Write(buf); err != nil {
@@ -224,10 +261,10 @@ func (h *handler) status(w http.ResponseWriter, r *http.Request) {
 
 			if anounceProcessingDelayed {
 				buf = append(buf, "data: "...)
-				buf = append(buf, []byte(getStatusTranslation(catalog.StatusProcessing, langTag))...)
+				buf = append(buf, getStatusTranslation(catalog.StatusProcessing, langTag)...)
 				buf = append(buf, "\n\n"...)
 				buf = append(buf, "event: status\ndata: "...)
-				buf = append(buf, []byte(catalog.StatusProcessing)...)
+				buf = append(buf, catalog.StatusProcessing...)
 				buf = append(buf, "\n\n"...)
 				anounceProcessingDelayed = false
 			}
@@ -251,7 +288,7 @@ func (h *handler) status(w http.ResponseWriter, r *http.Request) {
 
 			if latest.Message != lastState {
 				buf = append(buf, "event: stage\ndata: "...)
-				buf = append(buf, []byte(T(latest.Message, latest.ArgsMessage...))...)
+				buf = append(buf, T(latest.Message, latest.ArgsMessage...)...)
 				buf = append(buf, "\n\n"...)
 			}
 
@@ -275,10 +312,10 @@ func (h *handler) respondWithFinalStatus(ctx context.Context, w http.ResponseWri
 		slog.WarnContext(ctx, fmt.Sprintf("failed getting document for final status: %v", err))
 
 		buf = append(buf, "event: status\ndata: "...)
-		buf = append(buf, []byte("unknown")...)
+		buf = append(buf, "unknown"...)
 		buf = append(buf, "\n\n"...)
 		buf = append(buf, "event: done\ndata: "...)
-		buf = append(buf, []byte(i18n.TranslateFuncFromContext(ctx)(i18n.TextStatusUnknown))...)
+		buf = append(buf, i18n.TranslateFuncFromContext(ctx)(i18n.TextStatusUnknown)...)
 		buf = append(buf, "\n\n"...)
 		if _, err := w.Write(buf); err != nil {
 			return
@@ -299,10 +336,10 @@ func (h *handler) respondWithFinalStatus(ctx context.Context, w http.ResponseWri
 	buf = append(buf, "\n\n"...)
 
 	buf = append(buf, "event: status\ndata: "...)
-	buf = append(buf, []byte(doc.Status)...)
+	buf = append(buf, doc.Status...)
 	buf = append(buf, "\n\n"...)
 	buf = append(buf, "event: done\ndata: "...)
-	buf = append(buf, []byte(getStatusTranslation(doc.Status, i18n.LangTagFromContext(ctx)))...)
+	buf = append(buf, getStatusTranslation(doc.Status, i18n.LangTagFromContext(ctx))...)
 	buf = append(buf, "\n\n"...)
 
 	if _, err := w.Write(buf); err != nil {

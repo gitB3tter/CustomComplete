@@ -3,8 +3,8 @@ package suggestions
 import (
 	"bufio"
 	"customcomplete/internal/catalog"
+	"customcomplete/internal/constraints"
 	"customcomplete/internal/errs"
-	"customcomplete/internal/home"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
 	"customcomplete/internal/store"
@@ -27,15 +27,16 @@ import (
 
 var (
 	//go:embed suggestions.html
-	tmpl string
-	path = (&url.URL{
-		Path: "/",
-	}).JoinPath("suggestions")
-	supportedTypes = mediatypes.Types{mediatypes.HTML, mediatypes.Linkset, mediatypes.LinksetJSON}
+	tmpl           string
+	supportedTypes                 = mediatypes.Types{mediatypes.HTML, mediatypes.Linkset, mediatypes.LinksetJSON}
+	Path           weblinking.Path = weblinking.RootPath.Join("suggestions")
 )
 
 const (
-	limitDefault = 5
+	limitDefault           = 5
+	limitMax               = 100
+	maxSuggestionsInHeader = 10
+	limitBytesLinkHeader   = 4 << 10 //4 KiB
 	// bump for changes that should affect the ETag
 	version = 1
 )
@@ -59,10 +60,6 @@ type clientData struct {
 	Limit        int64
 }
 
-type getDocument interface {
-	GetDocument(docID catalog.DocumentID) (catalog.Document, error)
-}
-
 type handler struct {
 	queries  queries
 	template map[language.Tag]*template.Template
@@ -72,7 +69,7 @@ func (h *handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /suggestions", redirectCanonical(h.suggest))
 }
 
-func NewHandler(db store.Read, baseTemplates *ui.BaseTemplates, getStatus getDocument) (h *handler, err error) {
+func NewHandler(db store.Read, baseTemplates *ui.BaseTemplates) (h *handler, err error) {
 	h = &handler{}
 	if h.queries, err = prepareQueries(db); err != nil {
 		return
@@ -85,7 +82,7 @@ func (h *handler) suggest(w http.ResponseWriter, r *http.Request) {
 	langTag := i18n.LangTagFromContext(r.Context())
 	T := i18n.Func(langTag)
 	responsetype, ok := transport.NegotiateOr406(w, r,
-		weblinking.New(weblinking.Up, home.Path()).WithTitle(T(i18n.NavigationHome)),
+		weblinking.New(weblinking.Up, weblinking.RootPath).WithTitle(T(i18n.NavigationHome)),
 		supportedTypes,
 	)
 	if !ok {
@@ -103,11 +100,15 @@ func (h *handler) suggest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		clientData.FilterTextID = 0
 	}
-	clientData.Limit, err = strconv.ParseInt(r.URL.Query().Get("limit"), 10, 0)
-	if err != nil || clientData.Limit <= 0 {
-		clientData.Limit = limitDefault
-	}
 
+	clientData.Limit, err = strconv.ParseInt(r.URL.Query().Get("limit"), 10, 0)
+	if err != nil {
+		clientData.Limit = limitDefault
+	} else if clientData.Limit <= 0 {
+		clientData.Limit = limitDefault
+	} else if clientData.Limit > limitMax {
+		clientData.Limit = limitMax
+	}
 	ctx, prefix, baseText := parseContext(clientData.Text)
 
 	// limit + 2 prefix bounds + 1 docID
@@ -121,10 +122,10 @@ func (h *handler) suggest(w http.ResponseWriter, r *http.Request) {
 	title := T(i18n.NavigationSuggestions)
 	filteredByTextID := clientData.FilterTextID != 0
 	if filteredByTextID {
-		var docName catalog.DocumentName
+		var docName constraints.Label
 		ETag, docID, docName, err = h.getETagDoc(clientData.FilterTextID, langTag, responsetype)
 		if err != nil {
-			if invalidParam, ok := errors.AsType[*errs.InvalidParam](err); ok {
+			if invalidParam, ok := errors.AsType[*errs.FieldError](err); ok {
 				h.respondErrorTextID(w, r, invalidParam, clientData, title)
 				return
 			}
@@ -190,56 +191,50 @@ func (h *handler) suggest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	self := &url.URL{
-		Path:       r.URL.Path,
-		RawPath:    r.URL.RawPath,
-		RawQuery:   r.URL.RawQuery,
-		ForceQuery: r.URL.ForceQuery,
-	}
-
-	links := append(linksGeneral(langTag), weblinking.Alternates(self, langTag, responsetype, supportedTypes...)...)
-	links = append(links, weblinking.New(weblinking.Self, self))
-	var query url.Values = make(url.Values)
+	self := weblinking.New(weblinking.Self, Path).WithQuery(r.URL.Query())
+	links := append(linksGeneral(langTag), weblinking.AlternatesFor(self, langTag, responsetype, supportedTypes...)...)
+	links = append(links, self)
+	suggestionLink := weblinking.New(weblinking.Item, Path)
 	if docID != nil {
-		query.Set("textID", strconv.FormatInt(int64(*docID), 10))
+		suggestionLink = suggestionLink.WithQueryVal("textID", strconv.FormatInt(int64(*docID), 10))
 	}
 	for _, suggestion := range suggestions {
-		query.Set("text", baseText+suggestion+" ")
-		urlSuggestion := *path
-		urlSuggestion.RawQuery = query.Encode()
-		links = append(links, weblinking.New(weblinking.Item, &urlSuggestion).WithTitle(suggestion))
+		links = append(
+			links,
+			suggestionLink.WithQueryVal("text", baseText+suggestion+" ").
+				WithTitle(suggestion),
+		)
 	}
 
 	var output []byte
 	switch responsetype {
 	case mediatypes.HTML:
-		output, err = h.bufferHTML(langTag, clientData, suggestions, false, "", linkBack(r), title, false)
+		output, err = h.bufferHTML(langTag, clientData, suggestions, false, "", pathBack(langTag, baseText, r.URL.Query()), title, false)
 	case mediatypes.Linkset:
 		output = []byte(links.Linkset())
 	case mediatypes.LinksetJSON:
 		output, err = links.MarshalJSON()
 	}
 	if err != nil {
-		transport.InternalError(w, r, err, linkBack(r))
+		transport.InternalError(w, r, err, pathBack(langTag, baseText, r.URL.Query()))
 		return
 	}
-	w.Header().Set("Content-Type", responsetype.String())
 	if responsetype == mediatypes.HTML {
-		w.Header().Set("Link", links.String())
+		w.Header().Set("Link", links.StringUpTo(limitBytesLinkHeader))
 	}
 	w.Header().Set("ETag", string(ETag))
-	transport.Write(r.Context(), w, output)
+	transport.Write(r.Context(), w, output, responsetype, http.StatusOK)
 }
 
-func (h *handler) respondErrorTextID(w http.ResponseWriter, r *http.Request, invalidParam *errs.InvalidParam, uData clientData, title string) {
+func (h *handler) respondErrorTextID(w http.ResponseWriter, r *http.Request, invalidParam *errs.FieldError, uData clientData, title string) {
 	langTag := i18n.LangTagFromContext(r.Context())
 	T := i18n.Func(langTag)
 
-	queryRequest := (*r.URL).Query()
-	queryRequest.Del("textID")
-	urlResponse := r.URL
-	urlResponse.RawQuery = queryRequest.Encode()
-	backLink := weblinking.New(weblinking.Up, urlResponse).WithTitle(i18n.TranslateFuncFromContext(r.Context())(i18n.SuggestionsBackToLast))
+	q := r.URL.Query()
+	q.Del("textID")
+	backLink := weblinking.New(weblinking.Up, Path).
+		WithQuery(q).
+		WithTitle(T(i18n.SuggestionsBackToLast))
 
 	responsetype := transport.ResolveErrorContentType(r)
 
@@ -252,9 +247,14 @@ func (h *handler) respondErrorTextID(w http.ResponseWriter, r *http.Request, inv
 		reason := T(i18n.SuggestionsFilterTextError) + invalidParam.Reason
 		output, err = h.bufferHTML(langTag, uData, []string{}, false, reason, backLink, title, false)
 	case mediatypes.JSON, mediatypes.ProblemJSON:
-		output, err = transport.ProblemValidation(r.Context(), &errs.InvalidParams{invalidParam}, T(i18n.SuggestionsFilterTextError))
+		output, err = transport.ProblemFieldError(r.Context(), errs.FieldErrors{*invalidParam}, T(i18n.SuggestionsFilterTextError))
 		if err == nil {
-			links = append(links, transport.GetProblemDescribedBy(transport.ProblemTypeValidation)...)
+			links = append(
+				links,
+				transport.ProblemErrorsPath.
+					Link(weblinking.DescribedBy).
+					WithTitle(T(i18n.NavigationDocumentation)),
+			)
 		}
 	case mediatypes.TextPlain:
 		output = []byte(T(i18n.SuggestionsFilterTextError) + ":\n" + invalidParam.Reason)
@@ -265,16 +265,13 @@ func (h *handler) respondErrorTextID(w http.ResponseWriter, r *http.Request, inv
 	}
 
 	transport.SetErrorHeaders(w.Header())
-	w.Header().Set("Content-Type", responsetype.String())
 	w.Header().Set("Link", links.String())
 	transport.AddVaryOnce(w.Header(), "Accept")
-	switch invalidParam.Code {
-	case errs.CodeConflict:
-		w.WriteHeader(http.StatusConflict)
-	default:
-		w.WriteHeader(http.StatusUnprocessableEntity)
+	status := http.StatusUnprocessableEntity
+	if invalidParam.Code == errs.CodeConflict {
+		status = http.StatusConflict
 	}
-	transport.Write(r.Context(), w, output)
+	transport.Write(r.Context(), w, output, responsetype, status)
 }
 
 func (h *handler) respondNoTextsYet(w http.ResponseWriter, r *http.Request, uData clientData, responsetype mediatypes.Type) {
@@ -282,27 +279,24 @@ func (h *handler) respondNoTextsYet(w http.ResponseWriter, r *http.Request, uDat
 
 	T := i18n.Func(langTag)
 
-	backLink := weblinking.New(weblinking.Up, r.URL).WithTitle(T(i18n.SuggestionsBackToLast))
-
-	links := append(linksGeneral(langTag), backLink)
+	links := append(linksGeneral(langTag), Path.Link(weblinking.Up))
 
 	var output []byte
 	var err error
 	switch responsetype {
 	case mediatypes.HTML:
-		output, err = h.bufferHTML(langTag, uData, []string{}, false, "", backLink, T(i18n.NavigationSuggestions), true)
+		output, err = h.bufferHTML(langTag, uData, []string{}, false, "", Path.Link(weblinking.Up), T(i18n.NavigationSuggestions), true)
 	case mediatypes.Linkset:
 		output = []byte(links.Linkset())
 	case mediatypes.LinksetJSON:
 		output, err = links.MarshalJSON()
 	}
 	if err != nil {
-		transport.InternalError(w, r, err, backLink)
+		transport.InternalError(w, r, err, Path.Link(weblinking.Up))
 		return
 	}
-	w.Header().Set("Content-Type", responsetype.String())
 	w.Header().Set("Link", links.String())
-	transport.Write(r.Context(), w, output)
+	transport.Write(r.Context(), w, output, responsetype, http.StatusOK)
 
 }
 
@@ -312,11 +306,7 @@ func (h *handler) respondInternalErrorQuery(w http.ResponseWriter, r *http.Reque
 	langTag := i18n.LangTagFromContext(r.Context())
 	T := i18n.Func(langTag)
 
-	queryRequest := (*r.URL).Query()
-	queryRequest.Set("text", baseText)
-	urlResponse := r.URL
-	urlResponse.RawQuery = queryRequest.Encode()
-	backLink := weblinking.New(weblinking.Up, urlResponse).WithTitle(i18n.TranslateFuncFromContext(r.Context())(i18n.SuggestionsBackToLast))
+	backLink := pathBack(langTag, baseText, r.URL.Query())
 
 	responsetype := transport.ResolveErrorContentType(r)
 
@@ -335,10 +325,8 @@ func (h *handler) respondInternalErrorQuery(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	transport.SetErrorHeaders(w.Header())
-	w.Header().Set("Content-Type", responsetype.String())
 	w.Header().Set("Link", append(linksGeneral(langTag), backLink).String())
-	w.WriteHeader(http.StatusInternalServerError)
-	transport.Write(r.Context(), w, output)
+	transport.Write(r.Context(), w, output, responsetype, http.StatusInternalServerError)
 }
 
 func parseContext(text string) (context []string, prefix string, baseText string) {
@@ -371,20 +359,20 @@ func parseContext(text string) (context []string, prefix string, baseText string
 	return words, prefix, baseText
 }
 
-func (h *handler) getETagDoc(rawID int64, langTag language.Tag, responseType mediatypes.Type) (ETag transport.ETagWeak, docID *catalog.DocumentID, docName catalog.DocumentName, err error) {
+func (h *handler) getETagDoc(rawID int64, langTag language.Tag, responseType mediatypes.Type) (ETag transport.ETagWeak, docID *catalog.DocumentID, docName constraints.Label, err error) {
 	var ok bool
 	var id catalog.DocumentID
 	T := i18n.Func(langTag)
 	id, ok = catalog.ParseDocumentIDFromInt64(rawID)
 	if !ok {
-		return "", nil, "", errs.InvalidParamFromCodedError("textID", errs.NotFound(), T(i18n.SuggestionsFilterTextError)+" "+T(i18n.SuggestionsFilterTextNotFound))
+		return "", nil, "", new(errs.InvalidParamFromCodedError("textID", errs.NotFound(), T(i18n.SuggestionsFilterTextError)+" "+T(i18n.SuggestionsFilterTextNotFound)))
 	}
 	docID = &id
 	var state string
 	var status catalog.SourceStatus
 	if err = h.queries.metaDoc.QueryRow(version, docID).Scan(&state, &status, &docName); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", nil, "", errs.InvalidParamFromCodedError("textID", errs.NotFound(), T(i18n.SuggestionsFilterTextError)+" "+T(i18n.SuggestionsFilterTextNotFound))
+			return "", nil, "", new(errs.InvalidParamFromCodedError("textID", errs.NotFound(), T(i18n.SuggestionsFilterTextError)+" "+T(i18n.SuggestionsFilterTextNotFound)))
 		}
 		return
 	}
@@ -398,7 +386,7 @@ func (h *handler) getETagDoc(rawID int64, langTag language.Tag, responseType med
 		reason = T(i18n.SuggestionsFilterTextProcessingIncomplete)
 	}
 
-	return "", nil, "", errs.InvalidParamFromCodedError("textID", errs.Conflict(catalog.StatusComplete, status), reason)
+	return "", nil, "", new(errs.InvalidParamFromCodedError("textID", errs.Conflict(catalog.StatusComplete, status), reason))
 }
 
 func (h *handler) bufferHTML(langTag language.Tag, uData clientData, suggestions []string, hasErrorQuery bool, errMessage string, linkBack weblinking.Link, title string, NoTexts bool) ([]byte, error) {
@@ -413,9 +401,12 @@ func (h *handler) bufferHTML(langTag language.Tag, uData clientData, suggestions
 		NoTexts       bool
 	}{
 		Base: ui.BaseDataHTML{
-			Title:       title,
-			Lang:        langTag,
-			Breadcrumbs: weblinking.Links{weblinking.New(weblinking.Up, home.Path()).WithTitle(i18n.Func(langTag)(i18n.NavigationHome))},
+			Title: title,
+			Lang:  langTag,
+			Breadcrumbs: weblinking.Links{
+				weblinking.New(weblinking.Up, weblinking.RootPath).
+					WithTitle(i18n.Func(langTag)(i18n.NavigationHome)),
+			},
 		},
 		clientData:    uData,
 		Suggestions:   suggestions,
@@ -429,11 +420,16 @@ func (h *handler) bufferHTML(langTag language.Tag, uData clientData, suggestions
 func linksGeneral(langTag language.Tag) weblinking.Links {
 	T := i18n.Func(langTag)
 	return weblinking.Links{
-		weblinking.New(weblinking.Up, home.Path()).WithTitle(T(i18n.NavigationHome)),
+		weblinking.New(weblinking.Up, weblinking.RootPath).WithTitle(T(i18n.NavigationHome)),
 	}
 }
 
-// link to previous suggestions
-func linkBack(r *http.Request) weblinking.Link {
-	return weblinking.New(weblinking.Up, r.URL).WithTitle(i18n.TranslateFuncFromContext(r.Context())(i18n.SuggestionsBackToLast))
+func pathBack(langTag language.Tag, baseText string, query url.Values) weblinking.Link {
+	out := weblinking.New(weblinking.Up, Path).
+		WithQueryVal("text", baseText).
+		WithTitle(i18n.Translate(langTag, i18n.SuggestionsBackToLast))
+	if query.Has("textID") {
+		out = out.WithQueryVal("textID", query.Get("textID"))
+	}
+	return out
 }

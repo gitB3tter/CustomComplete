@@ -2,99 +2,109 @@ package texts
 
 import (
 	"customcomplete/internal/catalog"
-	"customcomplete/internal/errs"
+	"customcomplete/internal/constraints"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
 	"customcomplete/internal/transport"
 	"customcomplete/internal/ui"
+	"customcomplete/internal/weblinking"
 	_ "embed"
-	"errors"
 	"net/http"
 )
 
 var (
 	//go:embed partials/delete-form.html
-	templatePartialDeleteForm string
+	deleteFormPartialTemplate string
 	//go:embed delete-form.html
-	templateDeleteForm string
+	deleteFormTemplate string
 )
 
 type deleteFormData struct {
 	ID         catalog.DocumentID
-	Name       catalog.DocumentName
+	Name       constraints.Label
 	ETagStrong transport.ETagStrong
 }
 
-func (h *handler) registerConfirmDelete(mux *http.ServeMux) {
+func DeleteFormPath(docID catalog.DocumentID) weblinking.Path {
+	return TextsItemPath(docID).Join("delete")
+}
+
+func (h *handler) registerDeleteForm(mux *http.ServeMux) {
 	mux.Handle("GET /texts/{textID}/delete",
-		transport.NoBody(h.deleteForm))
+		transport.NoBody(h.deleteForm),
+	)
+	mux.Handle("OPTIONS /texts/{textID}/delete",
+		transport.NoBody(h.deleteFormOptions),
+	)
 }
 
 func (h *handler) initDeleteForm(base *ui.BaseTemplates) (err error) {
-	h.deleteFormTemplate, err = base.BuildHTML(templatePartialDeleteForm, templateDeleteForm)
+	h.deleteFormTemplate, err = base.BuildHTML(deleteFormPartialTemplate, deleteFormTemplate)
 	return
 }
 
 func (h *handler) deleteForm(w http.ResponseWriter, r *http.Request) {
 
-	if ok := transport.RequireAccepts(mediatypes.HTML, w, r, collectionLink(i18n.LangTagFromContext(r.Context()))); !ok {
+	langTag := i18n.LangTagFromContext(r.Context())
+
+	if proceed := transport.RequireAccepts(mediatypes.HTML, w, r, collectionLink(langTag)); !proceed {
 		return
 	}
 
-	id, ok := catalog.ParseDocumentIDFromString(r.PathValue("textID"))
-	if !ok {
-		respondNotFound(w, r)
-		return
-	}
-
-	doc, err := h.service.GetDocument(id)
-	if err != nil {
-		var errWithCode *errs.CodedError
-		if errors.As(err, &errWithCode) && errWithCode.Code() == errs.CodeNotFound {
-			respondNotFound(w, r)
-		} else {
-			respondInternalError(w, r, err)
-		}
-		return
-	}
-
-	var ETagStrong transport.ETagStrong
-	if ETagStrong, ok = itemEtagStrongOr500(w, r, id, doc); !ok {
+	docID, doc, proceed := h.getDocOrRespond(w, r)
+	if !proceed {
 		return
 	}
 
 	var output []byte
-
-	w.Header().Set("Content-Type", mediatypes.HTML.String())
+	var err error
 	T := i18n.TranslateFuncFromContext(r.Context())
-	output, err = ui.BufferHTML(h.deleteFormTemplate[i18n.LangTagFromContext(r.Context())],
+	output, err = ui.BufferHTML(h.deleteFormTemplate[langTag],
 		struct {
 			Base ui.BaseDataHTML
 			deleteFormData
 		}{
 			Base: ui.BaseDataHTML{
-				Title:           T(i18n.TextDeleteFormTitle, doc.Name),
+				Title:           T(i18n.NavigationTextDeleteForm, doc.Name),
 				MetaDescription: T(i18n.DocsRelsDeleteFormMetaDescription),
 				NoIndex:         true,
 			},
 			deleteFormData: deleteFormData{
-				ID:         id,
+				ID:         docID,
 				Name:       doc.Name,
-				ETagStrong: ETagStrong,
+				ETagStrong: itemETagStrong(doc),
 			},
 		})
 	if err != nil {
-		respondInternalErrorSubresource(w, r, err, id, doc.Name)
+		respondInternalErrorSubresource(w, r, err, docID, doc.Name)
 		return
 	}
-	w.Header().Set("Link", itemLinkUp(id, doc.Name).String())
+
+	w.Header().Set("Link", itemLinkUp(docID, doc.Name).String())
 	transport.SetNoCache(w.Header())
 	etag := transport.GetEtagWeak(output)
+	w.Header().Set("ETag", string(etag))
 	if transport.ETagMatchWeak(r.Header.Values("If-None-Match"), etag) {
-		transport.RespondNoContent(w)
+		transport.WriteNoBody(r.Context(), w, http.StatusNotModified)
 		return
 	}
 
-	transport.Write(r.Context(), w, output)
+	transport.Write(r.Context(), w, output, mediatypes.HTML, http.StatusOK)
 
+}
+
+func (h *handler) deleteFormOptions(w http.ResponseWriter, r *http.Request) {
+	docID, doc, proceed := h.getDocOrRespond(w, r)
+	if !proceed {
+		return
+	}
+
+	w.Header().Set("Allow", "GET, HEAD, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Expose-Headers", "Link, Allow, Vary")
+	w.Header().Set("Accept-Post", mediatypes.FormUrlEncoded.String())
+	w.Header().Set("Link", itemLinkUp(docID, doc.Name).String())
+	transport.WriteNoBody(r.Context(), w, http.StatusNoContent)
 }

@@ -10,19 +10,18 @@ import (
 	"net/http"
 )
 
+func TextsFilePath(docID catalog.DocumentID) weblinking.Path {
+	return TextsItemPath(docID).Join("file")
+}
+
 func (h *handler) registerFile(mux *http.ServeMux) {
 	mux.Handle("GET /texts/{textID}/file",
-		transport.NoBody(
-			h.file,
-		))
+		transport.NoBody(h.file))
 }
 
 func (h *handler) file(w http.ResponseWriter, r *http.Request) {
 
-	var docID catalog.DocumentID
-	var doc catalog.Document
-	var proceed bool
-	docID, doc, proceed = h.getDocOrRespond(w, r, r.PathValue("textID"))
+	docID, doc, proceed := h.getDocOrRespond(w, r)
 	if !proceed {
 		return
 	}
@@ -32,11 +31,11 @@ func (h *handler) file(w http.ResponseWriter, r *http.Request) {
 
 	links := weblinking.Links{
 		itemLinkUp(docID, doc.Name),
-		weblinking.New(weblinking.Self, itemPath(docID).JoinPath("file")),
+		weblinking.New(weblinking.Self, TextsFilePath(docID)),
 	}
 
-	ETagStrong := transport.GetEtagStrongLiteral(string(doc.Hash))
-	if transport.EtagMatchStrong(r.Header.Values("If-None-Match"), ETagStrong) {
+	etagStrong := transport.GetEtagStrongLiteral(string(doc.Hash))
+	if transport.EtagMatchStrong(r.Header.Values("If-None-Match"), etagStrong) {
 		w.Header().Set("Link", links.String())
 		w.WriteHeader(http.StatusNotModified)
 		return
@@ -54,15 +53,15 @@ func (h *handler) file(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Link", links.String())
-
-	transport.SetContentType(w, mediatypes.TextPlain)
-
 	if r.URL.Query().Has("download") {
 		w.Header().Set("Content-Disposition", `attachment; filename="`+string(doc.Filename)+`.txt"`)
 	} else {
 		w.Header().Set("Content-Disposition", `inline; filename="`+string(doc.Filename)+`.txt"`)
 	}
 
-	w.Write(contents)
+	w.Header().Set("ETag", string(etagStrong))
+
+	w.Header().Set("Link", links.String())
+
+	transport.Write(r.Context(), w, contents, mediatypes.TextPlain, http.StatusOK)
 }

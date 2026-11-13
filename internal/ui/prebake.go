@@ -7,7 +7,9 @@ import (
 	"golang.org/x/text/language"
 )
 
-func (baseTemplates *BaseTemplates) Prebake(typ mediatypes.Type, templates []string, data map[language.Tag]any) (map[language.Tag][]byte, error) {
+type Prebaked map[language.Tag][]byte
+
+func (baseTemplates *BaseTemplates) Prebake(typ mediatypes.Type, templates []string, data map[language.Tag]any) (Prebaked, error) {
 
 	switch typ {
 	case mediatypes.HTML:

@@ -59,7 +59,9 @@ const (
 	//requires Text.Name string
 	NavigationTextStatus Key = "NavigationTextStatus"
 	//requires Text.Name string
-	NavigationTextEditForm             Key = "NavigationTextEditForm"
+	NavigationTextEditForm Key = "NavigationTextEditForm"
+	//requires Text.Name string
+	NavigationTextDeleteForm           Key = "NavigationTextDeleteForm"
 	NavigationSuggestions              Key = "NavigationSuggestions"
 	NavigationDocumentation            Key = "NavigationDocumentation"
 	NavigationDocsSchemas              Key = "NavigationDocsSchemas"
@@ -166,7 +168,6 @@ const (
 	//requires maxBytes int
 	TextFieldFilenameMaxBytes    Key = "TextFieldFilenameMaxBytes"
 	TextFieldFilenamePattern     Key = "TextFieldFilenamePattern"
-	TextFieldFilenameReserved    Key = "TextFieldFilenameReserved"
 	TextFieldFilenameInvalid     Key = "TextFieldFilenameInvalid"
 	TextFieldFilenameType        Key = "TextFieldFilenameType"
 	TextFieldFilenameInvalidUTF8 Key = "TextFieldFilenameInvalidUTF8"
@@ -192,8 +193,6 @@ const (
 
 	//create
 	TextCreateFlashSuccess Key = "TextCreateFlashSuccess"
-	//only send to non-HTML (error) clients to not assume availability of (e.g. radio) choice affordance
-	TextCreateErrorChooseSource Key = "TextCreateErrorChooseSource"
 
 	//item
 	//requires Text.Name string
@@ -240,8 +239,6 @@ const (
 	TextUpdatePreconditionFailed Key = "TextUpdatePreconditionFailed"
 
 	//delete-form
-	//requires Text.Name string
-	TextDeleteFormTitle Key = "TextDeleteFormTitle"
 	//requires Text.Name string
 	TextDeleteFormMetaDescription Key = "TextDeleteFormMetaDescription"
 	//requires Text.Name string prended
@@ -293,8 +290,7 @@ const (
 
 	//---
 	//Docs
-	DocsTitlePrefix Key = "DocsTitlePrefix"
-	DocsFiles       Key = "DocsFiles"
+	DocsFiles Key = "DocsFiles"
 	//rels
 	DocsRelsCollectionMetaDescription Key = "DocsRelsCollectionMetaDescription"
 	DocsRelsDeleteFormBodyDescription Key = "DocsRelsDeleteFormBodyDescription"
@@ -303,11 +299,16 @@ const (
 	//Problems
 	DocsProblemValidationDescription    Key = "DocsProblemValidationDescription"
 	DocsProblemTitleDescription         Key = "DocsProblemTitleDescription"
+	DocsProblemInvalidParamsTitle       Key = "DocsProblemInvalidParamsTitle"
 	DocsProblemInvalidParamsDescription Key = "DocsProblemInvalidParamsDescription"
 	//extensions
+	DocsProblemInvalidParamNameTitle         Key = "DocsProblemInvalidParamNameTitle"
 	DocsProblemInvalidParamNameDescription   Key = "DocsProblemInvalidParamNameDescription"
+	DocsProblemInvalidParamCodeTitle         Key = "DocsProblemInvalidParamCodeTitle"
 	DocsProblemInvalidParamCodeDescription   Key = "DocsProblemInvalidParamCodeDescription"
+	DocsProblemInvalidParamParamsTitle       Key = "DocsProblemInvalidParamParamsTitle"
 	DocsProblemInvalidParamParamsDescription Key = "DocsProblemInvalidParamParamsDescription"
+	DocsProblemInvalidParamReasonTitle       Key = "DocsProblemInvalidParamReasonTitle"
 	DocsProblemInvalidParamReasonDescription Key = "DocsProblemInvalidParamReasonDescription"
 
 	//specifications

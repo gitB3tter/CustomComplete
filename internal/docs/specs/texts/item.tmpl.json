@@ -1,7 +1,7 @@
 {
     "openapi": "3.1.0",
     "info": {
-        "title": "{{T `DocsTitlePrefix`}}: {{T `NavigationDocsTextsItem`}}",
+        "title": "{{T `NavigationDocumentation`}}: {{T `NavigationDocsTextsItem`}}",
         "version": "0.1.0",
         "description": "{{T `TextItemMetaDescription` (T `DocsSpecsExampleTextName`)}}"
     },
@@ -21,7 +21,7 @@
                 }
             ],
             "get": {
-                "summary": "{{T `DocsTitlePrefix`}}: {{T `NavigationDocsTextsItem`}}",
+                "summary": "{{T `NavigationDocumentation`}}: {{T `NavigationDocsTextsItem`}}",
                 "responses": {
                     "200": {
                         "description": "{{T `TextItemMetaDescription` (T `DocsSpecsExampleTextName`)}}",
@@ -30,7 +30,7 @@
                                 "schema": {
                                     "type": "string",
                                     "examples": [
-                                        "</texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts/1>; rel=\"self\"; title=\"{{T `DocsSpecsExampleTextName`}}\", </texts/1/file>; rel=\"enclosure\"; title=\"{{T `DocsSpecsExampleTextFilename`}}\", </texts/1/file>; rel=\"edit-media\"; title=\"{{T `DocsSpecsExampleTextFilename`}}\", </texts/1/status>; rel=\"status\"; title=\"{{T `NavigationTextStatus`}}\", </texts/1/edit>; rel=\"edit-form\"; title=\"{{T `NavigationTextEditForm` (T `DocsSpecsExampleTextName`) }}\", </texts/1/delete>; rel=\"/docs/rels/delete-form\"; title=\"{{T `TextDeleteFormTitle` (T `DocsSpecsExampleTextName`) }}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts/1>; rel=\"alternate\"; type=\"application/json\", </texts/1>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
+                                        "</texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts/1>; rel=\"self\"; title=\"{{T `DocsSpecsExampleTextName`}}\", </texts/1/file>; rel=\"enclosure\"; title=\"{{T `DocsSpecsExampleTextFilename`}}\", </texts/1/file>; rel=\"edit-media\"; title=\"{{T `DocsSpecsExampleTextFilename`}}\", </texts/1/status>; rel=\"status\"; title=\"{{T `NavigationTextStatus`}}\", </texts/1/edit>; rel=\"edit-form\"; title=\"{{T `NavigationTextEditForm` (T `DocsSpecsExampleTextName`) }}\", </texts/1/delete>; rel=\"/docs/rels/delete-form\"; title=\"{{T `NavigationTextDeleteForm` (T `DocsSpecsExampleTextName`) }}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `NavigationDocumentation`}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `NavigationDocumentation`}}\", </texts/1>; rel=\"alternate\"; type=\"application/json\", </texts/1>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
                                     ]
                                 }
                             },
@@ -127,7 +127,7 @@
                 }
             },
             "head": {
-                "summary": "{{T `DocsTitlePrefix`}}: {{T `DocsSpecsExampleTextName`}}",
+                "summary": "{{T `NavigationDocumentation`}}: {{T `DocsSpecsExampleTextName`}}",
                 "responses": {
                     "200": {
                         "description": "{{T `TextItemMetaDescription` (T `DocsSpecsExampleTextName`)}}",
@@ -202,7 +202,7 @@
                 }
             },
             "options": {
-                "summary": "{{T `DocsTitlePrefix`}}: {{T `DocsSpecsExampleTextName`}}",
+                "summary": "{{T `NavigationDocumentation`}}: {{T `DocsSpecsExampleTextName`}}",
                 "responses": {
                     "204": {
                         "description": "{{T `TextItemMetaDescription` (T `DocsSpecsExampleTextName`)}}",
@@ -211,7 +211,7 @@
                                 "schema": {
                                     "type": "string",
                                     "examples": [
-                                        "</texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts/1>; rel=\"self\"; title=\"{{T `DocsSpecsExampleTextName`}}\", </texts/1/file>; rel=\"enclosure\"; title=\"{{T `DocsSpecsExampleTextFilename`}}\", </texts/1/file>; rel=\"edit-media\"; title=\"{{T `DocsSpecsExampleTextFilename`}}\", </texts/1/status>; rel=\"status\"; title=\"{{T `NavigationTextStatus`}}\", </texts/1/edit>; rel=\"edit-form\"; title=\"{{T `NavigationTextEditForm` (T `DocsSpecsExampleTextName`) }}\", </texts/1/delete>; rel=\"/docs/rels/delete-form\"; title=\"{{T `TextDeleteFormTitle` (T `DocsSpecsExampleTextName`) }}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts/1>; rel=\"alternate\"; type=\"text/html; charset=utf-8\", </texts/1>; rel=\"alternate\"; type=\"application/json\", </texts/1>; rel=\"alternate\"; hreflang=\"de\", </texts/1>; rel=\"alternate\"; hreflang=\"en\""
+                                        "</texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts/1>; rel=\"self\"; title=\"{{T `DocsSpecsExampleTextName`}}\", </texts/1/file>; rel=\"enclosure\"; title=\"{{T `DocsSpecsExampleTextFilename`}}\", </texts/1/file>; rel=\"edit-media\"; title=\"{{T `DocsSpecsExampleTextFilename`}}\", </texts/1/status>; rel=\"status\"; title=\"{{T `NavigationTextStatus`}}\", </texts/1/edit>; rel=\"edit-form\"; title=\"{{T `NavigationTextEditForm` (T `DocsSpecsExampleTextName`) }}\", </texts/1/delete>; rel=\"/docs/rels/delete-form\"; title=\"{{T `NavigationTextDeleteForm` (T `DocsSpecsExampleTextName`) }}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `NavigationDocumentation`}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `NavigationDocumentation`}}\", </texts/1>; rel=\"alternate\"; type=\"text/html; charset=utf-8\", </texts/1>; rel=\"alternate\"; type=\"application/json\", </texts/1>; rel=\"alternate\"; hreflang=\"de\", </texts/1>; rel=\"alternate\"; hreflang=\"en\""
                                     ]
                                 }
                             },
@@ -270,7 +270,7 @@
                 }
             },
             "post": {
-                "summary": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextEditForm` (T `DocsSpecsExampleTextName`)}}",
+                "summary": "{{T `NavigationDocumentation`}}: {{T `NavigationTextEditForm` (T `DocsSpecsExampleTextName`)}}",
                 "parameters": [
                     {
                         "$ref": "/docs/specs/components/parameters/prefer-return"
@@ -406,7 +406,7 @@
                 }
             },
             "patch": {
-                "summary": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextEditForm` (T `DocsSpecsExampleTextName`)}}",
+                "summary": "{{T `NavigationDocumentation`}}: {{T `NavigationTextEditForm` (T `DocsSpecsExampleTextName`)}}",
                 "parameters": [
                     {
                         "$ref": "/docs/specs/components/parameters/prefer-return"
@@ -464,8 +464,8 @@
                     }
                 }
             },
-                        "delete": {
-                "summary": "{{T `DocsTitlePrefix`}}: {{T `TextDeleteFormTitle` (T `DocsSpecsExampleTextName`)}}",
+            "delete": {
+                "summary": "{{T `NavigationDocumentation`}}: {{T `NavigationTextDeleteForm` (T `DocsSpecsExampleTextName`)}}",
                 "parameters": [
                     {
                         "$ref": "/docs/specs/components/parameters/if-match"
@@ -554,7 +554,7 @@
                                 "schema": {
                                     "type": "string",
                                     "examples": [
-                                        "</texts/1>; rel=\"up\"; title=\"{{T `DocsSpecsExampleTextName`}}\", </texts/1/status>; rel=\"self\"; title=\"{{T `NavigationTextStatus` (T `DocsSpecsExampleTextName`)}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts/1/status>; rel=\"alternate\"; type=\"text/event-stream\", </texts/1/status>; rel=\"alternate\"; type=\"application/json\", </texts/1/status>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
+                                        "</texts/1>; rel=\"up\"; title=\"{{T `DocsSpecsExampleTextName`}}\", </texts/1/status>; rel=\"self\"; title=\"{{T `NavigationTextStatus` (T `DocsSpecsExampleTextName`)}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `NavigationDocumentation`}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `NavigationDocumentation`}}\", </texts/1/status>; rel=\"alternate\"; type=\"text/event-stream\", </texts/1/status>; rel=\"alternate\"; type=\"application/json\", </texts/1/status>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
                                     ]
                                 }
                             },
@@ -708,7 +708,7 @@
                                 "schema": {
                                     "type": "string",
                                     "examples": [
-                                        "</texts/1>; rel=\"up\"; title=\"{{T `DocsSpecsExampleTextName`}}\", </texts/1/status>; rel=\"self\"; title=\"{{T `NavigationTextStatus` (T `DocsSpecsExampleTextName`)}}, </docs/specs/texts/item>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts/1/status>; rel=\"alternate\"; type=\"text/html\", </texts/1/status>; rel=\"alternate\"; type=\"text/event-stream\", </texts/1/status>; rel=\"alternate\"; type=\"application/json\", </texts/1/status>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\", </texts/1/status>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleLangTag`}}\""
+                                        "</texts/1>; rel=\"up\"; title=\"{{T `DocsSpecsExampleTextName`}}\", </texts/1/status>; rel=\"self\"; title=\"{{T `NavigationTextStatus` (T `DocsSpecsExampleTextName`)}}, </docs/specs/texts/item>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `NavigationDocumentation`}}\", </docs/specs/texts/item>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `NavigationDocumentation`}}\", </texts/1/status>; rel=\"alternate\"; type=\"text/html\", </texts/1/status>; rel=\"alternate\"; type=\"text/event-stream\", </texts/1/status>; rel=\"alternate\"; type=\"application/json\", </texts/1/status>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\", </texts/1/status>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleLangTag`}}\""
                                     ]
                                 }
                             },

@@ -1,7 +1,7 @@
 {
     "openapi": "3.1.0",
     "info": {
-        "title": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextCollection`}}",
+        "title": "{{T `NavigationDocumentation`}}: {{T `NavigationTextCollection`}}",
         "version": "0.1.0",
         "description": "{{T `TextCollectionMetaDescription`}}"
     },
@@ -13,7 +13,7 @@
                 }
             ],
             "get": {
-                "summary": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextCollection`}}",
+                "summary": "{{T `NavigationDocumentation`}}: {{T `NavigationTextCollection`}}",
                 "responses": {
                     "200": {
                         "description": "{{T `TextCollectionMetaDescription`}}",
@@ -22,7 +22,7 @@
                                 "schema": {
                                     "type": "string",
                                     "examples": [
-                                        "</>; rel=\"up\"; title=\"{{T `NavigationHome`}}\", </texts>; rel=\"self\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"create-form\"; title=\"{{T `NavigationTextCreateForm`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts>; rel=\"alternate\"; type=\"application/linkset\", </texts>; rel=\"alternate\"; type=\"application/linkset+json\", </texts>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
+                                        "</>; rel=\"up\"; title=\"{{T `NavigationHome`}}\", </texts>; rel=\"self\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"create-form\"; title=\"{{T `NavigationTextCreateForm`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `NavigationDocumentation`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `NavigationDocumentation`}}\", </texts>; rel=\"alternate\"; type=\"application/linkset\", </texts>; rel=\"alternate\"; type=\"application/linkset+json\", </texts>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
                                     ]
                                 }
                             },
@@ -193,7 +193,7 @@
                                 "schema": {
                                     "type": "string",
                                     "examples": [
-                                        "</>; rel=\"up\"; title=\"{{T `NavigationHome`}}\", </texts>; rel=\"self\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"create-form\"; title=\"{{T `NavigationTextCreateForm`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts>; rel=\"alternate\"; type=\"text/html\", </texts>; rel=\"alternate\"; type=\"application/linkset\", </texts>; rel=\"alternate\"; type=\"application/linkset+json\", </texts>; rel=\"alternate\"; hreflang=\"en\", </texts>; rel=\"alternate\"; hreflang=\"de\""
+                                        "</>; rel=\"up\"; title=\"{{T `NavigationHome`}}\", </texts>; rel=\"self\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"create-form\"; title=\"{{T `NavigationTextCreateForm`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `NavigationDocumentation`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `NavigationDocumentation`}}\", </texts>; rel=\"alternate\"; type=\"text/html\", </texts>; rel=\"alternate\"; type=\"application/linkset\", </texts>; rel=\"alternate\"; type=\"application/linkset+json\", </texts>; rel=\"alternate\"; hreflang=\"en\", </texts>; rel=\"alternate\"; hreflang=\"de\""
                                     ]
                                 }
                             },
@@ -249,7 +249,7 @@
                 }
             },
             "post": {
-                "summary": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextCreateForm`}}",
+                "summary": "{{T `NavigationDocumentation`}}: {{T `NavigationTextCreateForm`}}",
                 "parameters": [
                     {
                         "$ref": "/docs/specs/components/parameters/prefer-return"
@@ -360,7 +360,7 @@
                 }
             ],
             "get": {
-                "summary": "{{T `DocsTitlePrefix`}}: {{T `NavigationTextCreateForm`}}",
+                "summary": "{{T `NavigationDocumentation`}}: {{T `NavigationTextCreateForm`}}",
                 "responses": {
                     "200": {
                         "description": "{{T `TextCreateFormMetaDescription`}}",
@@ -369,7 +369,7 @@
                                 "schema": {
                                     "type": "string",
                                     "examples": [
-                                        "</texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"self\"; title=\"{{T `NavigationTextCreateForm`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts/new>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
+                                        "</texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"self\"; title=\"{{T `NavigationTextCreateForm`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `NavigationDocumentation`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `NavigationDocumentation`}}\", </texts/new>; rel=\"alternate\"; hreflang=\"{{T `DocsSpecsExampleOtherLangTag`}}\""
                                     ]
                                 }
                             },
@@ -513,7 +513,7 @@
                                 "schema": {
                                     "type": "string",
                                     "examples": [
-                                        "</texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"self\"; title=\"{{T `NavigationTextCollection`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `DocsTitlePrefix`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `DocsTitlePrefix`}}\", </texts/new>; rel=\"alternate\"; hreflang=\"en\", </texts/new>; rel=\"alternate\"; hreflang=\"de\""
+                                        "</texts>; rel=\"up\"; title=\"{{T `NavigationTextCollection`}}\", </texts>; rel=\"collection\"; title=\"{{T `NavigationTextCollection`}}\", </texts/new>; rel=\"self\"; title=\"{{T `NavigationTextCollection`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"application/vnd.oai.openapi+json\"; title=\"{{T `NavigationDocumentation`}}\", </docs/specs/texts/collection>; rel=\"describedby\"; type=\"text/html; charset=utf-8\"; title=\"{{T `NavigationDocumentation`}}\", </texts/new>; rel=\"alternate\"; hreflang=\"en\", </texts/new>; rel=\"alternate\"; hreflang=\"de\""
                                     ]
                                 }
                             },

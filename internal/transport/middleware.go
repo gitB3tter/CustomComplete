@@ -6,7 +6,6 @@ import (
 	"customcomplete/internal/mediatypes"
 	"customcomplete/internal/weblinking"
 	"net/http"
-	"net/url"
 )
 
 func MB(mb int) (byte int64) {
@@ -31,7 +30,7 @@ func LimitBody(next http.HandlerFunc, accepted mediatypes.Types, maxBodySize int
 			return
 		}
 
-		linkHome := weblinking.New(weblinking.Up, &url.URL{Path: "/"}).WithTitle(T(i18n.NavigationHome))
+		linkHome := weblinking.New(weblinking.Up, weblinking.RootPath).WithTitle(T(i18n.NavigationHome))
 
 		if r.ContentLength > maxBodySize {
 			ContentTooLarge(w, r, i18n.FormatBytesLocale(maxBodySize, langTag), linkHome)
@@ -91,11 +90,5 @@ func Log(next http.Handler) http.Handler {
 		lw := &logWriter{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(lw, r)
 		logging.EndLog(r, lw.status)
-	})
-}
-
-func ParsePreference(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, WithPreferences(r, ParsePreferHeader(r.Header.Get("Prefer"))))
 	})
 }

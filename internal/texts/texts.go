@@ -11,9 +11,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 
 	"golang.org/x/text/language"
@@ -23,32 +21,35 @@ import (
 const (
 	//advisory limit, recommend file upload instead if over
 	textMaxWords     int   = 100000
-	networkBufferMB  int64 = 5                                       // Other Fields + Protocol Overhead + small Buffer
-	maxPayloadSizeMB int64 = catalog.MaxFileSizeMB + networkBufferMB // Network Limit
+	networkBufferMB  int64 = 5                                           // Other Fields + Protocol Overhead + small output
+	maxPayloadSizeMB int64 = constraints.MaxFileSizeMB + networkBufferMB // Network Limit
 	maxPayloadSize   int64 = maxPayloadSizeMB * 1_000_000
 )
 
 var (
 	postContentType mediatypes.Type = mediatypes.MultipartForm
+	specPath        weblinking.Path = weblinking.DocsSpecsPath.Join("texts")
+	schemaPath      weblinking.Path = weblinking.DocsSchemasPath.Join("texts")
+	docPath         weblinking.Path = weblinking.DocsPath.Join("texts")
 )
 
 type formFieldErrors map[string]string
 
-func newFormFieldErrors(err error, source string, langTag language.Tag) (FieldErrors formFieldErrors) {
+func newFormFieldErrors(err error, src source, langTag language.Tag) (FieldErrors formFieldErrors) {
 
 	FieldErrors = make(formFieldErrors)
 
-	if err, ok := errors.AsType[*errs.InvalidParams](err); !ok {
+	if err, ok := errors.AsType[*errs.FieldErrors](err); !ok {
 		return
 	} else {
 		// if no known source selected => show only error to select a source, dont show errors of (non-visible until checked) text or file
-		sourceSelected := slices.Contains(sources, source)
+		sourceSelected := slices.Contains(validSources, src)
 
 		for _, invalidParam := range *err {
 			//if there are multiple, only put one error
 			if _, ok := FieldErrors[invalidParam.Name]; !ok {
-				if !sourceSelected && slices.Contains(sources, invalidParam.Name) {
-					FieldErrors[fieldSourceName] = i18n.Func(langTag)(i18n.TextCreateFormUnselected)
+				if !sourceSelected && slices.Contains(validSources, source(invalidParam.Name)) {
+					FieldErrors[string(sourceField)] = i18n.Func(langTag)(i18n.TextCreateFormUnselected)
 					continue
 				}
 				FieldErrors[invalidParam.Name] = invalidParam.Reason
@@ -60,7 +61,7 @@ func newFormFieldErrors(err error, source string, langTag language.Tag) (FieldEr
 
 type FormUserData struct {
 	Name   string
-	Source string
+	Source source
 	Text   string
 }
 
@@ -77,16 +78,16 @@ type formData struct {
 	FilesizeLimitMB   int64
 }
 
-func newFormData(formUserData FormUserData, err error, lang language.Tag) formData {
+func newFormData(userData FormUserData, err error, langTag language.Tag) formData {
 	return formData{
-		FormUserData:      formUserData,
-		Errors:            newFormFieldErrors(err, formUserData.Source, lang),
+		FormUserData:      userData,
+		Errors:            newFormFieldErrors(err, userData.Source, langTag),
 		NameMaxCodePoints: catalog.DocumentNameMaxCodePoints,
 		WordMax:           textMaxWords,
-		WordMaxFmt:        message.NewPrinter(lang).Sprintf("%d", textMaxWords),
+		WordMaxFmt:        message.NewPrinter(langTag).Sprintf("%d", textMaxWords),
 		WordMin:           catalog.MinWordsContents,
-		FilesizeLimit:     catalog.MaxFileSize,
-		FilesizeLimitMB:   catalog.MaxFileSizeMB,
+		FilesizeLimit:     constraints.MaxFileSize,
+		FilesizeLimitMB:   constraints.MaxFileSizeMB,
 	}
 }
 
@@ -98,64 +99,58 @@ func respondInternalError(w http.ResponseWriter, r *http.Request, err error) {
 	transport.InternalError(w, r, err, collectionLink(i18n.LangTagFromContext(r.Context())))
 }
 
-func respondInternalErrorSubresource(w http.ResponseWriter, r *http.Request, err error, docID catalog.DocumentID, docName catalog.DocumentName) {
+func respondInternalErrorSubresource(w http.ResponseWriter, r *http.Request, err error, docID catalog.DocumentID, docName constraints.Label) {
 	transport.InternalError(w, r, err, itemLinkUp(docID, docName))
 }
 
-func respondBodyNotParseableItem(w http.ResponseWriter, r *http.Request, docID catalog.DocumentID, docName catalog.DocumentName) {
+func respondBodyNotParseableItem(w http.ResponseWriter, r *http.Request, docID catalog.DocumentID, docName constraints.Label) {
 	transport.BadRequest(w, r, i18n.TranslateFuncFromContext(r.Context())(i18n.HTTPErrorBodyNotParseable), itemLinkUp(docID, docName))
 }
 
-func itemETagStrong(doc catalog.Document) (transport.ETagStrong, error) {
-	return transport.GetEtagStrong(newItemData(doc))
-}
+type source string
 
-func itemEtagStrongOr500(w http.ResponseWriter, r *http.Request, docID catalog.DocumentID, doc catalog.Document) (transport.ETagStrong, bool) {
-	if ETagStrong, err := itemETagStrong(doc); err != nil {
-		w.Header().Del("Location")
-		respondInternalErrorSubresource(w, r, err, docID, doc.Name)
-		return "", false
-	} else {
-		return ETagStrong, true
+type sources []source
+
+func (srcs sources) toAny() (out []any) {
+	out = make([]any, 0, len(srcs))
+	for _, src := range srcs {
+		out = append(out, src)
 	}
-}
-
-func collectionPath() *url.URL {
-	return (&url.URL{Path: "/"}).JoinPath("texts")
-}
-
-func itemPath(docID catalog.DocumentID) *url.URL {
-	return collectionPath().JoinPath(strconv.FormatInt(int64(docID), 10))
-}
-
-func collectionLink(langTag language.Tag) weblinking.Link {
-	return weblinking.New(weblinking.Collection, collectionPath()).WithTitle(i18n.Func(langTag)(i18n.NavigationTextCollection))
-}
-
-func itemLinkUp(docID catalog.DocumentID, docName catalog.DocumentName) weblinking.Link {
-	return weblinking.New(weblinking.Up, itemPath(docID)).WithTitle(string(docName))
+	return
 }
 
 const (
-	//name of field naming the resource
-	fieldNameName = "name"
+	//nameField of field naming the resource
+	nameField = "name"
 	//name of the field for choosing to provide text(-area content) or file(-input upload)
-	fieldSourceName = "source"
-	//keep the text (edit-form)
-	sourceKeep = "keep"
-	//name of the field containing text (and value for "source" to choose text(-area content))
-	fieldTextName = "text"
+	sourceField = "source"
+	//name of field containing text (and value for "source" to choose text(-area content))
+	textField = "text"
 	//name of the field containing a file upload (and value for "source" to choose file(-input upload))
-	fieldFileName = "file"
+	fileField = "file"
+	//keep the text (edit-form)
+	keep source = "keep"
+	text source = source(textField)
+	file source = source(fileField)
 )
 
-var sources = []string{
-	sourceKeep,
-	fieldTextName,
-	fieldFileName,
+var (
+	validSources = sources{
+		keep,
+		text,
+		file,
+	}
+)
+
+// explicit radio (unenhanced HTML) wins; otherwise infer
+func resolveSource(formValue string) source {
+	if slices.Contains(validSources, source(formValue)) {
+		return source(formValue)
+	}
+	return ""
 }
 
-func parseMultipartFormOrRespond(w http.ResponseWriter, r *http.Request, langTag language.Tag, escape weblinking.Link) (userData FormUserData, filename string, contents []byte, proceed bool) {
+func parseMultipartFormOrRespond(w http.ResponseWriter, r *http.Request, langTag language.Tag, escape weblinking.Link, allowedSources sources) (userData FormUserData, filename string, contents []byte, errSource *errs.CodedError, proceed bool) {
 	T := i18n.Func(langTag)
 	err := r.ParseMultipartForm(maxPayloadSize)
 	if err != nil {
@@ -164,40 +159,50 @@ func parseMultipartFormOrRespond(w http.ResponseWriter, r *http.Request, langTag
 		} else {
 			transport.BadRequest(w, r, T(i18n.HTTPErrorBodyNotParseable), escape)
 		}
-		return FormUserData{}, "", []byte{}, false
+		proceed = false
+		return
 	}
 	defer r.MultipartForm.RemoveAll()
 
-	userData.Name = r.FormValue(fieldNameName)
-	userData.Source = r.FormValue(fieldSourceName)
-	userData.Text = r.FormValue(fieldTextName)
+	userData.Name = r.PostFormValue(nameField)
+	userData.Source = resolveSource(r.PostFormValue(sourceField))
+	userData.Text = r.PostFormValue(textField)
 
 	switch userData.Source {
-	case fieldTextName:
+	case text:
 		contents = []byte(userData.Text)
-	case "", fieldFileName:
-		file, header, err := r.FormFile(fieldFileName)
+	case "", file:
+		multipartFile, header, err := r.FormFile(string(fileField))
 		if err != nil && !errors.Is(err, http.ErrMissingFile) {
 			transport.InternalError(w, r, err, escape)
-			return FormUserData{}, "", []byte{}, false
+			return FormUserData{}, "", []byte{}, nil, false
 		} else if err == nil {
-			defer file.Close()
-			limitedFile := io.LimitReader(file, catalog.MaxFileSize+1)
+			defer multipartFile.Close()
+			if userData.Source == "" && len(userData.Text) > 0 {
+				errSource = new(errs.Enum(allowedSources.toAny(), r.PostFormValue(sourceField)))
+				proceed = true
+				return
+			}
+			userData.Source = file
+			limitedFile := io.LimitReader(multipartFile, constraints.MaxFileSize+1)
 			contents, err = io.ReadAll(limitedFile)
 			if err != nil {
 				transport.InternalError(w, r, err, escape)
-				return FormUserData{}, "", []byte{}, false
+				return FormUserData{}, "", []byte{}, nil, false
 			}
-			filename = header.Filename
-		} else {
+			filename = strings.TrimSuffix(header.Filename, ".txt")
+
+		} else if userData.Source == "" && len(userData.Text) > 0 {
+			userData.Source = text
 			contents = []byte(userData.Text)
 		}
 	}
-	return userData, strings.TrimSuffix(filename, ".txt"), contents, true
+
+	return userData, filename, contents, nil, true
 }
 
-func (h *handler) getDocOrRespond(w http.ResponseWriter, r *http.Request, raw string) (docID catalog.DocumentID, doc catalog.Document, proceeed bool) {
-	if docID, proceeed = catalog.ParseDocumentIDFromString(raw); !proceeed {
+func (h *handler) getDocOrRespond(w http.ResponseWriter, r *http.Request) (docID catalog.DocumentID, doc catalog.Document, proceed bool) {
+	if docID, proceed = catalog.ParseDocumentIDFromString(r.PathValue("textID")); !proceed {
 		respondNotFound(w, r)
 		return
 	}
@@ -211,127 +216,97 @@ func (h *handler) getDocOrRespond(w http.ResponseWriter, r *http.Request, raw st
 			respondInternalError(w, r, err)
 		}
 	}
-	proceeed = err == nil
+	proceed = err == nil
 	return
 }
 
-func mapCatalogErrors(langTag language.Tag, FieldErrors *errs.FieldErrors) *errs.InvalidParams {
-	var iParams errs.InvalidParams
-
-	for _, fieldErr := range FieldErrors.Errors() {
-		iParams = append(iParams, mapCatalogError(langTag, fieldErr))
-	}
-
-	return &iParams
-}
-
-func mapCatalogError(langTag language.Tag, FieldError *errs.FieldError) *errs.InvalidParam {
-	switch FieldError.Name {
-	case "name":
-		return mapNameError(langTag, FieldError)
-	case "filename":
-		return mapFilenameError(langTag, FieldError)
-	case "file":
-		return mapFileError(langTag, FieldError)
-	case "text":
-		return mapTextError(langTag, FieldError)
-	}
-	return nil
-}
-
-func mapFilenameError(langTag language.Tag, fieldErr *errs.FieldError) *errs.InvalidParam {
-	T := i18n.Func(langTag)
-	out := &errs.InvalidParam{
-		Name:   fieldErr.Name,
-		Code:   fieldErr.Code(),
-		Params: fieldErr.Params(),
-	}
-	switch fieldErr.Code() {
-	case errs.CodeMinCodePoints:
-		out.Reason = T(i18n.TextFieldFilenameMinCodePoints, []any{out.Params[errs.ParamLimit]})
-
-	case errs.CodeMaxBytes:
-		out.Reason = T(i18n.TextFieldFilenameMaxBytes, []any{out.Params[errs.ParamLimit]})
-
-	case errs.CodePattern:
-		out.Reason = T(i18n.TextFieldFilenamePattern)
-
-	case errs.CodeInvalid:
-		p := fieldErr.Params()
-		if p[errs.ParamEncoding] == "utf-8" {
-			out.Reason = T(i18n.TextFieldFileInvalidUTF8)
-		} else if p[errs.ParamRule] == errs.RuleReserved {
-			out.Reason = T(i18n.TextFieldFilenameReserved)
-		} else {
-			out.Reason = T(i18n.CommonErrorUnknown)
-		}
-
-	default:
-		out.Reason = T(i18n.CommonErrorUnknown)
-	}
-	return out
-}
-
-func mapNameError(langTag language.Tag, fieldErr *errs.FieldError) *errs.InvalidParam {
-	T := i18n.Func(langTag)
-	out := errs.InvalidParam{
-		Name:   fieldErr.Name,
-		Code:   fieldErr.Code(),
-		Params: fieldErr.Params(),
-	}
-	switch fieldErr.Code() {
-	case errs.CodeMaxCodePoints:
-		out.Reason = T(i18n.TextFieldNameMaxCodePoints)
-	case errs.CodeRequired:
-		out.Reason = T(i18n.TextFieldNameRequired)
-	}
-	return &out
-}
-
-func mapTextError(langTag language.Tag, fieldErr *errs.FieldError) *errs.InvalidParam {
+func mapFilenameError(langTag language.Tag, errCoded errs.CodedError) errs.FieldError {
 	T := i18n.Func(langTag)
 	var reason string
-	switch fieldErr.Code() {
+	switch errCoded.Code() {
+	case errs.CodeMinCodePoints:
+		reason = T(i18n.TextFieldFilenameMinCodePoints, errCoded.Params()[errs.ParamLimit])
+	case errs.CodeMaxBytes:
+		reason = T(i18n.TextFieldFilenameMaxBytes, errCoded.Params()[errs.ParamLimit])
+	case errs.CodePattern:
+		reason = T(i18n.TextFieldFilenamePattern)
+	case errs.CodeInvalid:
+		p := errCoded.Params()
+		if p[errs.ParamEncoding] == "utf-8" {
+			reason = T(i18n.TextFieldFileInvalidUTF8)
+		} else {
+			reason = T(i18n.CommonErrorUnknown)
+		}
+	default:
+		reason = T(i18n.CommonErrorUnknown)
+	}
+	return errs.InvalidParamFromCodedError("filename", errCoded, reason)
+}
+
+func mapNameError(langTag language.Tag, errCoded errs.CodedError) errs.FieldError {
+	T := i18n.Func(langTag)
+	var reason string
+	switch errCoded.Code() {
+	case errs.CodeMaxCodePoints:
+		reason = T(i18n.TextFieldNameMaxCodePoints)
+	case errs.CodeRequired:
+		reason = T(i18n.TextFieldNameRequired)
+	default:
+		reason = T(i18n.CommonErrorUnknown)
+	}
+	return errs.InvalidParamFromCodedError(string(nameField), errCoded, reason)
+}
+
+func mapTextError(langTag language.Tag, errCoded errs.CodedError) errs.FieldError {
+	T := i18n.Func(langTag)
+	var reason string
+	switch errCoded.Code() {
 	case errs.CodeRequired:
 		reason = T(i18n.TextFieldTextMissing)
 	case errs.CodeMinWords:
-		reason = T(i18n.TextFieldTextMinWords, fieldErr.Params()[errs.ParamLimit])
+		reason = T(i18n.TextFieldTextMinWords, errCoded.Params()[errs.ParamLimit])
 	case errs.CodeMaxBytes:
 		var limitMB int64
-		if val, ok := fieldErr.Params()[errs.ParamLimit].(int64); ok {
+		if val, ok := errCoded.Params()[errs.ParamLimit].(int64); ok {
 			limitMB = val / 1_000_000
 		} else {
-			limitMB = catalog.MaxFileSizeMB
+			limitMB = constraints.MaxFileSizeMB
 		}
 		reason = T(i18n.TextFieldTextMaxBytes, limitMB)
 	case errs.CodeInvalid:
 		reason = T(i18n.TextFieldTextInvalidUTF8)
+	default:
+		reason = T(i18n.CommonErrorUnknown)
 	}
-	return errs.InvalidParamFromCodedError("text", fieldErr.CodedError, reason)
+	return errs.InvalidParamFromCodedError(textField, errCoded, reason)
 }
 
-func mapFileError(langTag language.Tag, fieldErr *errs.FieldError) *errs.InvalidParam {
+func mapFileError(langTag language.Tag, errCoded errs.CodedError) errs.FieldError {
 	T := i18n.Func(langTag)
 	reason := T(i18n.CommonErrorUnknown)
-	switch fieldErr.Code() {
+	switch errCoded.Code() {
 	case errs.CodeRequired:
 		reason = T(i18n.TextFieldFileMissing)
 	case errs.CodeMinWords:
-		reason = T(i18n.TextFieldFileMinWords, fieldErr.Params()[errs.ParamLimit])
+		reason = T(i18n.TextFieldFileMinWords, errCoded.Params()[errs.ParamLimit])
 	case errs.CodeMaxBytes:
 		var limitMB int64
-		if val, ok := fieldErr.Params()[errs.ParamLimit].(int64); ok {
+		if val, ok := errCoded.Params()[errs.ParamLimit].(int64); ok {
 			limitMB = val / 1_000_000
 		} else {
-			limitMB = catalog.MaxFileSizeMB
+			limitMB = constraints.MaxFileSizeMB
 		}
 		reason = T(i18n.TextFieldFileMaxBytes, limitMB)
 	case errs.CodeInvalid:
 		reason = T(i18n.TextFieldFileInvalidUTF8)
 	}
-	return errs.InvalidParamFromCodedError("file", fieldErr.CodedError, reason)
+	return errs.InvalidParamFromCodedError(fileField, errCoded, reason)
 }
 
-func deriveFilename(docName catalog.DocumentName, fileheaderName string, contents []byte) constraints.SafeFilename {
-	return constraints.DeriveSafeFilename(string(docName), strings.TrimSuffix(fileheaderName, ".txt"), constraints.FirstBytes(string(contents[:min(50, len(contents))]), 50))
+func deriveFilename(docName constraints.Label, fileheaderName string, contents []byte) constraints.SafeFilename {
+	return constraints.DeriveSafeFilename(
+		string(docName),
+		strings.TrimSuffix(fileheaderName, ".txt"),
+		constraints.FirstBytes(string(contents[:min(50, len(contents))]), 50),
+	)
 }

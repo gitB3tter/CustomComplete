@@ -1,6 +1,8 @@
 package textprocessing
 
 import (
+	"bufio"
+	"bytes"
 	"unicode"
 	"unicode/utf8"
 )
@@ -86,4 +88,34 @@ func ScanNormalizedWords(data []byte, atEOF bool) (advance int, token []byte, er
 	}
 
 	return start, nil, nil
+}
+
+func newWordScanner(data []byte) *bufio.Scanner {
+	s := bufio.NewScanner(bytes.NewReader(data))
+	s.Buffer(nil, max(len(data), bufio.MaxScanTokenSize))
+	s.Split(ScanNormalizedWords)
+	return s
+}
+
+func WordCount(data []byte) (count int) {
+	s := newWordScanner(data)
+	for s.Scan() {
+		count++
+	}
+	return count
+}
+
+func WordCountMin(data []byte, limit int) bool {
+	if limit <= 0 {
+		return true
+	}
+	s := newWordScanner(data)
+	count := 0
+	for s.Scan() {
+		count++
+		if count >= limit {
+			return true
+		}
+	}
+	return false
 }

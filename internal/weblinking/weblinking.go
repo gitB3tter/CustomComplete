@@ -3,38 +3,45 @@ package weblinking
 import (
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
-	"net/url"
 
 	"golang.org/x/text/language"
 )
 
-func AllAlternates(target *url.URL, supportedTypes ...mediatypes.Type) Links {
+func AllAlternates(path Path, supportedTypes ...mediatypes.Type) Links {
 	var links Links
 	for _, langTag := range i18n.SupportedLanguages {
-		l := New(Alternate, target)
+		l := New(Alternate, path)
 		l.Language = langTag
 		links = append(links, l)
 	}
 	for _, mediaType := range supportedTypes {
-		l := New(Alternate, target)
+		l := New(Alternate, path)
 		l.Type = mediaType
 		links = append(links, l)
 	}
 	return links
 }
 
-func Alternates(target *url.URL, curLang language.Tag, curType mediatypes.Type, supportedTypes ...mediatypes.Type) Links {
+func Alternates(path Path, curLang language.Tag, curType mediatypes.Type, supportedTypes ...mediatypes.Type) Links {
+	return AlternatesFor(New(Alternate, path), curLang, curType, supportedTypes...)
+}
+
+func AlternatesFor(base Link, curLang language.Tag, curType mediatypes.Type, supportedTypes ...mediatypes.Type) Links {
+	base.rel = Alternate
 	var links Links
-	alternate := New(Alternate, target)
 	for _, langTag := range i18n.SupportedLanguages {
 		if langTag != curLang {
-			links = append(links, alternate.WithLang(langTag))
+			links = append(links, base.WithLang(langTag))
 		}
 	}
 	for _, mediaType := range supportedTypes {
 		if mediaType != curType {
-			links = append(links, alternate.WithType(mediaType))
+			links = append(links, base.WithType(mediaType))
 		}
 	}
 	return links
+}
+
+func RootLink(langTag language.Tag) Link {
+	return New(Up, RootPath).WithTitle(i18n.Translate(langTag, i18n.NavigationHome))
 }

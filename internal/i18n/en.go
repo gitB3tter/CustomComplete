@@ -127,6 +127,8 @@ var translationsEn = map[Key]string{
 	TextFieldTextInfo:        "Pasted text and uploaded files can be up to %d MB",
 	TextFieldTextWordsOver:   "file upload recommended",
 
+	//source
+
 	//API field validation
 	TextFieldNameType:              "Name must be a string",
 	TextFieldNameInvalidUTF8:       "Name contains invalid UTF-8 characters",
@@ -134,7 +136,6 @@ var translationsEn = map[Key]string{
 	TextFieldFilenameMinCodePoints: "Filename must be at least %d characters",
 	TextFieldFilenameMaxBytes:      "Filename must be %d bytes or fewer",
 	TextFieldFilenamePattern:       "Filename may only contain lowercase letters, numbers, and single hyphens",
-	TextFieldFilenameReserved:      "Filename is reserved by the operating system",
 	TextFieldFilenameInvalid:       "Filename is invalid",
 	TextFieldFilenameType:          "Filename must be a string",
 	TextFieldFilenameInvalidUTF8:   "Filename contains invalid UTF-8 characters",
@@ -156,8 +157,7 @@ var translationsEn = map[Key]string{
 	TextCreateFormChoiceFile:      "Upload a file",
 
 	//create
-	TextCreateFlashSuccess:      "The text has been created",
-	TextCreateErrorChooseSource: "Provide either 'text' or 'file', but not both",
+	TextCreateFlashSuccess: "The text has been created",
 
 	//item
 	TextItemMetaDescription:     "%s. Text used for autocomplete and next word suggestions.",
@@ -197,7 +197,7 @@ var translationsEn = map[Key]string{
 	TextUpdatePreconditionFailed:   "Your changes have not been saved. The texts ETag and ETag given in If-Match do not match.",
 
 	//delete-form
-	TextDeleteFormTitle:            `Delete "%s"?`,
+	NavigationTextDeleteForm:       `Delete "%s"?`,
 	TextDeleteFormMetaDescription:  `Confirm the permanent deletion of "%s" and all derived suggestions`,
 	TextDeleteFormWarningPermanent: ` and all derived suggestions will be permanently deleted`,
 	TextDeleteFormActionLabel:      "Delete text",
@@ -240,7 +240,6 @@ var translationsEn = map[Key]string{
 
 	//---
 	//Docs
-	DocsTitlePrefix:                   "Documentation",
 	DocsFiles:                         "Files",
 	DocsRelsCollectionMetaDescription: "Custom extension link relation types used by the service",
 	DocsRelsDeleteFormBodyDescription: "The target resource contains a form for permanently deleting the context resource",
@@ -249,10 +248,15 @@ var translationsEn = map[Key]string{
 	//Problems
 	DocsProblemValidationDescription:         "The request did not pass validation. See errors for field-level details.",
 	DocsProblemTitleDescription:              "Short summary of the problem type. Constant across occurrences, localized via content negotiation.",
+	DocsProblemInvalidParamsTitle:            "Field-level Errors",
 	DocsProblemInvalidParamsDescription:      "List of field-level validation errors with a stable code, parameters, field name, and localized reason.",
+	DocsProblemInvalidParamNameTitle:         "Name",
 	DocsProblemInvalidParamNameDescription:   "Name of the invalid field or parameter",
+	DocsProblemInvalidParamCodeTitle:         "Code",
 	DocsProblemInvalidParamCodeDescription:   "Stable machine-readable code identifying the violated constraint",
+	DocsProblemInvalidParamParamsTitle:       "Parameters",
 	DocsProblemInvalidParamParamsDescription: "Additional constraint parameters such as limits or expected types",
+	DocsProblemInvalidParamReasonTitle:       "Reason",
 	DocsProblemInvalidParamReasonDescription: "Human-readable localized explanation of the error",
 
 	//specifications

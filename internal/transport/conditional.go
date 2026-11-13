@@ -16,8 +16,8 @@ type ETagWeak string
 
 type ETagStrong string
 
-func GetEtagWeak(b []byte) ETagWeak {
-	hash := sha256.Sum256(b)
+func GetEtagWeak(output []byte) ETagWeak {
+	hash := sha256.Sum256(output)
 	return ETagWeak(fmt.Sprintf(`W/"%x"`, hash[:16]))
 }
 
@@ -45,8 +45,8 @@ func normalizeETag(etag string) string {
 	return strings.Trim(strings.TrimPrefix(strings.TrimSpace(etag), "W/"), `"`)
 }
 
-func ETagMatchWeak(clientEtags []string, serverETag ETagWeak) bool {
-	serverEtagNorm := normalizeETag(string(serverETag))
+func ETagMatchWeak(clientEtags []string, etagWeak ETagWeak) bool {
+	serverEtagNorm := normalizeETag(string(etagWeak))
 
 	for _, header := range clientEtags {
 		for _, val := range httpsyntax.SplitList(header, ',') {
@@ -62,9 +62,9 @@ func ETagMatchWeak(clientEtags []string, serverETag ETagWeak) bool {
 	return false
 }
 
-func EtagMatchStrong(clientEtags []string, serverETag ETagStrong) bool {
+func EtagMatchStrong(clientEtags []string, etagStrong ETagStrong) bool {
 
-	serverEtagNorm := normalizeETag(string(serverETag))
+	serverEtagNorm := normalizeETag(string(etagStrong))
 
 	for _, header := range clientEtags {
 		for _, val := range httpsyntax.SplitList(header, ',') {
@@ -84,14 +84,14 @@ func EtagMatchStrong(clientEtags []string, serverETag ETagStrong) bool {
 	return false
 }
 
-func Precondition(ETagServer ETagStrong, ETagClient string, langTag language.Tag) *ErrorPrecondition {
+func Precondition(etagStrong ETagStrong, ETagClient string, langTag language.Tag) *ErrorPrecondition {
 	if ETagClient == "" {
 		return &ErrorPrecondition{
 			status:  http.StatusPreconditionRequired,
 			langTag: langTag,
 		}
 	}
-	if !EtagMatchStrong([]string{ETagClient}, ETagServer) {
+	if !EtagMatchStrong([]string{ETagClient}, etagStrong) {
 		return &ErrorPrecondition{
 			status:  http.StatusPreconditionFailed,
 			langTag: langTag,

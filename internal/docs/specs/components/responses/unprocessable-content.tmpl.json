@@ -8,10 +8,10 @@
     "content": {
         "application/problem+json": {
             "schema": {
-                "$ref": "/docs/problems/validation"
+                "$ref": "/docs/problems/errors"
             },
             "example": {
-                "type": "docs/problems/validation",
+                "type": "/docs/problems/errors",
                 "title": "There is a problem",
                 "errors": [
                     {
@@ -27,10 +27,10 @@
         },
         "application/json": {
             "schema": {
-                "$ref": "/docs/problems/validation"
+                "$ref": "/docs/problems/errors"
             },
             "example": {
-                "type": "docs/problems/validation",
+                "type": "/docs/problems/errors",
                 "title": "There is a problem",
                 "errors": [
                     {

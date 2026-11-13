@@ -1,10 +1,10 @@
 package docs
 
 import (
-	"customcomplete/internal/catalog"
-	"customcomplete/internal/home"
+	"customcomplete/internal/constraints"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
+	"customcomplete/internal/texts"
 	"customcomplete/internal/transport"
 	"customcomplete/internal/ui"
 	"customcomplete/internal/weblinking"
@@ -15,28 +15,26 @@ import (
 )
 
 const (
-	SpecsMain                         path = "/docs/specs"
-	SpecsTextsItem                    path = "/docs/specs/texts/item"
-	SpecsTextsCollection              path = "/docs/specs/texts/collection"
-	SpecsTextsFormBody                path = "/docs/specs/texts/components/form-body"
-	SpecsHeadersEtagStrong            path = "/docs/specs/components/headers/etag-strong"
-	SpecsHeadersEtagWeak              path = "/docs/specs/components/headers/etag-weak"
-	SpecsHeadersNoCache               path = "/docs/specs/components/headers/no-cache"
-	SpecsHeadersNoStore               path = "/docs/specs/components/headers/no-store"
-	SpecsHeadersReturnApplied         path = "/docs/specs/components/headers/preference-return-applied"
-	SpecsParamsLanguage               path = "/docs/specs/components/parameters/accept-language"
-	SpecsParamsPreferReturn           path = "/docs/specs/components/parameters/prefer-return"
-	SpecsParamsIfMatch                path = "/docs/specs/components/parameters/if-match"
-	SpecsResponsesNoBody              path = "/docs/specs/components/responses/body-not-allowed"
-	SpecsResponsesNotParseable        path = "/docs/specs/components/responses/body-not-parseable"
-	SpecsResponsesTooLarge            path = "/docs/specs/components/responses/content-too-large"
-	SpecsResponsesInternalError       path = "/docs/specs/components/responses/internal-error"
-	SpecsResponsesNotAcceptable       path = "/docs/specs/components/responses/not-acceptable"
-	SpecsResponsesNotFound            path = "/docs/specs/components/responses/not-found"
-	SpecsResponsePreconditionFailed   path = "/docs/specs/components/responses/precondition-failed"
-	SpecsResponsePreconditionRequired path = "/docs/specs/components/responses/precondition-required"
-	SpecsResponseUnsupportedMediaType path = "/docs/specs/components/responses/unsupported-mediatype"
-	SpecsResponsesUnprocessable       path = "/docs/specs/components/responses/unprocessable-content"
+	SpecsMain                         weblinking.Path = "/docs/specs"
+	SpecsTextsFormBody                weblinking.Path = "/docs/specs/texts/components/form-body"
+	SpecsHeadersEtagStrong            weblinking.Path = "/docs/specs/components/headers/etag-strong"
+	SpecsHeadersEtagWeak              weblinking.Path = "/docs/specs/components/headers/etag-weak"
+	SpecsHeadersNoCache               weblinking.Path = "/docs/specs/components/headers/no-cache"
+	SpecsHeadersNoStore               weblinking.Path = "/docs/specs/components/headers/no-store"
+	SpecsHeadersReturnApplied         weblinking.Path = "/docs/specs/components/headers/preference-return-applied"
+	SpecsParamsLanguage               weblinking.Path = "/docs/specs/components/parameters/accept-language"
+	SpecsParamsPreferReturn           weblinking.Path = "/docs/specs/components/parameters/prefer-return"
+	SpecsParamsIfMatch                weblinking.Path = "/docs/specs/components/parameters/if-match"
+	SpecsResponsesNoBody              weblinking.Path = "/docs/specs/components/responses/body-not-allowed"
+	SpecsResponsesNotParseable        weblinking.Path = "/docs/specs/components/responses/body-not-parseable"
+	SpecsResponsesTooLarge            weblinking.Path = "/docs/specs/components/responses/content-too-large"
+	SpecsResponsesInternalError       weblinking.Path = "/docs/specs/components/responses/internal-error"
+	SpecsResponsesNotAcceptable       weblinking.Path = "/docs/specs/components/responses/not-acceptable"
+	SpecsResponsesNotFound            weblinking.Path = "/docs/specs/components/responses/not-found"
+	SpecsResponsePreconditionFailed   weblinking.Path = "/docs/specs/components/responses/precondition-failed"
+	SpecsResponsePreconditionRequired weblinking.Path = "/docs/specs/components/responses/precondition-required"
+	SpecsResponseUnsupportedMediaType weblinking.Path = "/docs/specs/components/responses/unsupported-mediatype"
+	SpecsResponsesUnprocessable       weblinking.Path = "/docs/specs/components/responses/unprocessable-content"
 )
 
 var (
@@ -90,10 +88,10 @@ var (
 	//go:embed specs/components/responses/unprocessable-content.tmpl.json
 	specsResponsesUnprocessable string
 
-	specTemplatesSchemasSchemaJSON = map[path][]string{
+	specTemplatesSchemasSchemaJSON = map[weblinking.Path][]string{
 		SpecsMain:                         {specMainTmplJSON},
-		SpecsTextsItem:                    {specTextItemTmplJSON},
-		SpecsTextsCollection:              {specTextCollectionTmplJSON},
+		texts.ItemSpecPath:                {specTextItemTmplJSON},
+		texts.CollectionSpecPath:          {specTextCollectionTmplJSON},
 		SpecsTextsFormBody:                {specsTextsFormBody},
 		SpecsHeadersEtagStrong:            {specsHeadersEtagStrong},
 		SpecsHeadersEtagWeak:              {specsHeadersEtagWeak},
@@ -117,9 +115,9 @@ var (
 )
 
 func (h *docsHandler) initSpecs(baseTemplates *ui.BaseTemplates) (err error) {
-	escapes := make(map[path]map[language.Tag]weblinking.Link)
-	links := make(map[path]map[language.Tag]weblinking.Links)
-	data := make(map[path]map[language.Tag]any)
+	escapes := make(map[weblinking.Path]map[language.Tag]weblinking.Link)
+	links := make(map[weblinking.Path]map[language.Tag]weblinking.Links)
+	data := make(map[weblinking.Path]map[language.Tag]any)
 	for path := range specTemplatesSchemasSchemaJSON {
 		escapes[path] = make(map[language.Tag]weblinking.Link)
 		links[path] = make(map[language.Tag]weblinking.Links)
@@ -128,21 +126,24 @@ func (h *docsHandler) initSpecs(baseTemplates *ui.BaseTemplates) (err error) {
 	for _, langTag := range i18n.SupportedLanguages {
 		T := i18n.Func(langTag)
 		for path := range specTemplatesSchemasSchemaJSON {
-			escapes[path][langTag] = weblinking.New(weblinking.Up, home.Path().JoinPath(string(docs))).WithTitle(T(i18n.NavigationDocumentation))
+			escapes[path][langTag] = weblinking.New(weblinking.Up, weblinking.DocsPath).
+				WithTitle(T(i18n.NavigationDocumentation))
 			data[path][langTag] = struct {
 				WordMaxFmt      string
 				FilesizeLimitMB int64
 			}{
 				WordMaxFmt:      message.NewPrinter(langTag).Sprintf("%d", 100000),
-				FilesizeLimitMB: catalog.MaxFileSizeMB,
+				FilesizeLimitMB: constraints.MaxFileSizeMB,
 			}
 		}
 	}
 
 	for path := range escapes {
-		h.cache[path], err = transport.New(path.url(), escapes[path], links[path]).With(mediatypes.OpenAPIJSON, baseTemplates, specTemplatesSchemasSchemaJSON[path], data[path])
-		if err != nil {
-			return
+		if content, err := baseTemplates.Prebake(mediatypes.OpenAPIJSON, specTemplatesSchemasSchemaJSON[path], data[path]); err != nil {
+			return err
+		} else {
+			h.cache[path] = transport.NewCache(path, escapes[path], links[path]).
+				With(mediatypes.OpenAPIJSON, content)
 		}
 	}
 	return

@@ -1,7 +1,6 @@
 package docs
 
 import (
-	"customcomplete/internal/home"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
 	"customcomplete/internal/transport"
@@ -13,23 +12,23 @@ import (
 )
 
 const (
-	LinkRels          path = "/docs/rels"
-	LinkRelDeleteForm path = "/docs/rels/delete-form"
+	LinkRelsPath      weblinking.Path = "/docs/rels"
+	LinkRelDeleteForm weblinking.Path = "/docs/rels/delete-form"
 )
 
 var (
 	//go:embed linkrels/delete-form.tmpl.html
 	linkRelsDeleteFormHTML string
-	linkRelsTemplatesHTML  = map[path][]string{
+	linkRelsTemplatesHTML  = map[weblinking.Path][]string{
 		LinkRelDeleteForm: {linkRelsDeleteFormHTML},
-		LinkRels:          {collectionHTML},
+		LinkRelsPath:      {collectionHTML},
 	}
 )
 
 func (h *docsHandler) initLinkRels(baseTemplates *ui.BaseTemplates) (err error) {
-	escapes := make(map[path]map[language.Tag]weblinking.Link)
-	links := make(map[path]map[language.Tag]weblinking.Links)
-	data := make(map[path]map[language.Tag]any)
+	escapes := make(map[weblinking.Path]map[language.Tag]weblinking.Link)
+	links := make(map[weblinking.Path]map[language.Tag]weblinking.Links)
+	data := make(map[weblinking.Path]map[language.Tag]any)
 	for path := range linkRelsTemplatesHTML {
 		escapes[path] = make(map[language.Tag]weblinking.Link)
 		links[path] = make(map[language.Tag]weblinking.Links)
@@ -38,7 +37,7 @@ func (h *docsHandler) initLinkRels(baseTemplates *ui.BaseTemplates) (err error) 
 
 	for _, langTag := range i18n.SupportedLanguages {
 		T := i18n.Func(langTag)
-		escapes[LinkRelDeleteForm][langTag] = weblinking.New(weblinking.Up, docsPath().JoinPath("texts", "item")).WithTitle(T(i18n.DocsTitlePrefix) + ": " + T(i18n.NavigationTextCollection))
+		escapes[LinkRelDeleteForm][langTag] = weblinking.DocsPath.Link(weblinking.Up).WithTitle(T(i18n.NavigationDocumentation))
 		data[LinkRelDeleteForm][langTag] = struct {
 			Base ui.BaseDataHTML
 		}{
@@ -46,39 +45,41 @@ func (h *docsHandler) initLinkRels(baseTemplates *ui.BaseTemplates) (err error) 
 				Title: T(i18n.NavigationDocsDeleteForm),
 				Lang:  langTag,
 				Breadcrumbs: weblinking.Links{
-					weblinking.Breadcrumb(home.Path(), T(i18n.NavigationHome)),
-					weblinking.Breadcrumb(docsPath(), T(i18n.NavigationDocumentation)),
-					weblinking.New(weblinking.Up, LinkRels.url()).WithTitle(T(i18n.NavigationDocsRels)),
+					weblinking.Breadcrumb(weblinking.RootPath, T(i18n.NavigationHome)),
+					weblinking.Breadcrumb(weblinking.DocsPath, T(i18n.NavigationDocumentation)),
+					weblinking.New(weblinking.Up, LinkRelsPath).WithTitle(T(i18n.NavigationDocsRels)),
 				},
 			},
 		}
-		data[LinkRels][langTag] = collection{
+		data[LinkRelsPath][langTag] = collection{
 			Base: ui.BaseDataHTML{
 				Title:           T(i18n.NavigationDocsRels),
 				MetaDescription: T(i18n.DocsRelsCollectionMetaDescription),
 				Lang:            langTag,
 				Breadcrumbs: weblinking.Links{
-					weblinking.Breadcrumb(home.Path(), T(i18n.NavigationHome)),
-					weblinking.New(weblinking.Up, docsPath()).WithTitle(T(i18n.NavigationDocumentation)),
+					weblinking.Breadcrumb(weblinking.RootPath, T(i18n.NavigationHome)),
+					weblinking.New(weblinking.Up, weblinking.DocsPath).WithTitle(T(i18n.NavigationDocumentation)),
 				},
 			},
 			Items: weblinking.Links{
-				weblinking.New(weblinking.Item, GetPath(LinkRelDeleteForm)).WithTitle(T(i18n.NavigationDocsDeleteForm)),
+				weblinking.New(weblinking.Item, LinkRelDeleteForm).WithTitle(T(i18n.NavigationDocsDeleteForm)),
 			},
 		}
 	}
 
-	for path := range escapes {
-		h.cache[path] = transport.New(path.url(), escapes[path], links[path])
+	if contentLinkRels, err := baseTemplates.Prebake(mediatypes.HTML, linkRelsTemplatesHTML[LinkRelsPath], data[LinkRelsPath]); err != nil {
+		return err
+	} else {
+		h.cache[LinkRelsPath] = transport.NewCache(LinkRelsPath, escapes[LinkRelsPath], links[LinkRelsPath]).
+			With(mediatypes.HTML, contentLinkRels)
 	}
 
-	h.cache[LinkRels], err = h.cache[LinkRels].With(mediatypes.HTML, baseTemplates, linkRelsTemplatesHTML[LinkRels], data[LinkRels])
-	if err != nil {
-		return
+	if contentLinkRelDeleteForm, err := baseTemplates.Prebake(mediatypes.HTML, linkRelsTemplatesHTML[LinkRelDeleteForm], data[LinkRelDeleteForm]); err != nil {
+		return err
+	} else {
+		h.cache[LinkRelDeleteForm] = transport.NewCache(LinkRelDeleteForm, escapes[LinkRelDeleteForm], links[LinkRelDeleteForm]).
+			With(mediatypes.HTML, contentLinkRelDeleteForm)
 	}
-	h.cache[LinkRelDeleteForm], err = h.cache[LinkRelDeleteForm].With(mediatypes.HTML, baseTemplates, linkRelsTemplatesHTML[LinkRelDeleteForm], data[LinkRelDeleteForm])
-	if err != nil {
-		return
-	}
+
 	return
 }

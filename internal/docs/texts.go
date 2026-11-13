@@ -1,9 +1,9 @@
 package docs
 
 import (
-	"customcomplete/internal/home"
 	"customcomplete/internal/i18n"
 	"customcomplete/internal/mediatypes"
+	"customcomplete/internal/texts"
 	"customcomplete/internal/transport"
 	"customcomplete/internal/ui"
 	"customcomplete/internal/weblinking"
@@ -14,9 +14,7 @@ import (
 )
 
 const (
-	TextsIndex      path = "/docs/texts"
-	TextsItem       path = "/docs/texts/item"
-	TextsCollection path = "/docs/texts/collection"
+	TextsIndexPath weblinking.Path = "/docs/texts"
 )
 
 var (
@@ -25,26 +23,20 @@ var (
 	//go:embed texts/collection.tmpl.html
 	textCollectionTmplHTML string
 
-	templatesHTML = map[path][]string{
-		TextsItem:       {textItemTmplHTML},
-		TextsIndex:      {collectionHTML},
-		TextsCollection: {textCollectionTmplHTML},
-	}
-
-	texts = []path{
-		TextsItem,
-		TextsIndex,
-		TextsCollection,
+	templatesHTML = map[weblinking.Path][]string{
+		texts.ItemDocPath:       {textItemTmplHTML},
+		TextsIndexPath:          {collectionHTML},
+		texts.CollectionDocPath: {textCollectionTmplHTML},
 	}
 )
 
 // has to be called after json to read out metadata
 func (h *docsHandler) initTexts(baseTemplates *ui.BaseTemplates) (err error) {
 
-	data := make(map[path]map[language.Tag]any)
-	links := make(map[path]map[language.Tag]weblinking.Links)
+	data := make(map[weblinking.Path]map[language.Tag]any)
+	links := make(map[weblinking.Path]map[language.Tag]weblinking.Links)
 
-	for _, path := range texts {
+	for path := range templatesHTML {
 		data[path] = make(map[language.Tag]any)
 		links[path] = make(map[language.Tag]weblinking.Links)
 	}
@@ -52,91 +44,89 @@ func (h *docsHandler) initTexts(baseTemplates *ui.BaseTemplates) (err error) {
 		T := i18n.Func(langTag)
 
 		breadcrumbs := weblinking.Links{
-			weblinking.Breadcrumb(home.Path(), T(i18n.NavigationHome)),
+			weblinking.Breadcrumb(weblinking.RootPath, T(i18n.NavigationHome)),
 		}
 
-		home := home.Path()
-
-		links[TextsIndex][langTag] = weblinking.Links{
-			weblinking.New(weblinking.Item, home.JoinPath(string(TextsCollection))).WithTitle(T(i18n.NavigationDocsTextsCollection)),
-			weblinking.New(weblinking.Item, home.JoinPath(string(TextsItem))).WithTitle(T(i18n.NavigationDocsTextsItem)),
+		links[TextsIndexPath][langTag] = weblinking.Links{
+			weblinking.New(weblinking.Item, texts.CollectionDocPath).WithTitle(T(i18n.NavigationDocsTextsCollection)),
+			weblinking.New(weblinking.Item, texts.ItemDocPath).WithTitle(T(i18n.NavigationDocsTextsItem)),
 		}
 
-		data[TextsIndex][langTag] = collection{
+		data[TextsIndexPath][langTag] = collection{
 			Base: ui.BaseDataHTML{
-				Title:       T(i18n.DocsTitlePrefix) + ": " + T(i18n.NavigationTextCollection),
-				Breadcrumbs: append(breadcrumbs, weblinking.New(weblinking.Up, docsPath()).WithTitle(T(i18n.NavigationDocumentation))),
+				Title:       T(i18n.NavigationDocumentation) + ": " + T(i18n.NavigationTextCollection),
+				Breadcrumbs: append(breadcrumbs, weblinking.New(weblinking.Up, weblinking.DocsPath).WithTitle(T(i18n.NavigationDocumentation))),
 				Lang:        langTag,
 			},
-			Items: links[TextsIndex][langTag],
+			Items: links[TextsIndexPath][langTag],
 		}
 
-		links[TextsIndex][langTag] = append(append(links[TextsIndex][langTag], breadcrumbs...),
-			weblinking.New(weblinking.Up, docsPath()).WithTitle(T(i18n.NavigationDocumentation)),
-			weblinking.New(weblinking.Self, home.JoinPath(string(TextsIndex))).WithTitle(T(i18n.DocsTitlePrefix)+": "+T(i18n.NavigationDocsTextsCollection)),
+		links[TextsIndexPath][langTag] = append(append(links[TextsIndexPath][langTag], breadcrumbs...),
+			weblinking.New(weblinking.Up, weblinking.DocsPath).WithTitle(T(i18n.NavigationDocumentation)),
+			weblinking.New(weblinking.Self, TextsIndexPath).WithTitle(T(i18n.NavigationDocumentation)+": "+T(i18n.NavigationDocsTextsCollection)),
 		)
 
 		breadcrumbs = append(breadcrumbs,
-			weblinking.Breadcrumb(docsPath(), T(i18n.NavigationDocumentation)),
-			weblinking.New(weblinking.Up, docsPath().JoinPath("texts")).WithTitle(T(i18n.NavigationTextCollection)),
+			weblinking.New(weblinking.Up, weblinking.DocsPath).WithTitle(T(i18n.NavigationDocumentation)),
+			weblinking.New(weblinking.Up, TextsIndexPath).WithTitle(T(i18n.NavigationTextCollection)),
 		)
 
-		links[TextsItem][langTag] = append(breadcrumbs, weblinking.New(weblinking.Self, docsPath().JoinPath("texts", "item")))
+		links[texts.ItemDocPath][langTag] = append(breadcrumbs, weblinking.New(weblinking.Self, texts.ItemDocPath))
 
-		filesizeSchema, ok := h.cache[SchemaTextsItem].GetSize(mediatypes.SchemaJSON, langTag)
+		filesizeSchema, ok := h.cache[texts.ItemSchemaPath].GetSize(mediatypes.SchemaJSON, langTag)
 		if !ok {
 			return fmt.Errorf("filesize schema textitem not found")
 		}
-		filesizeSpec, ok := h.cache[SpecsTextsItem].GetSize(mediatypes.OpenAPIJSON, langTag)
+		filesizeSpec, ok := h.cache[texts.ItemSpecPath].GetSize(mediatypes.OpenAPIJSON, langTag)
 		if !ok {
 			return fmt.Errorf("filesize spec textitem not found")
 		}
 
-		data[TextsItem][langTag] = struct {
+		data[texts.ItemDocPath][langTag] = struct {
 			Base   ui.BaseDataHTML
 			Schema attachment
 			Spec   attachment
 		}{
 			Base: ui.BaseDataHTML{
-				Title:           T(i18n.DocsTitlePrefix) + ": " + T(i18n.NavigationDocsTextsItem),
-				MetaDescription: T(i18n.DocsTitlePrefix) + ": " + T(i18n.TextItemMetaDescription),
+				Title:           T(i18n.NavigationDocumentation) + ": " + T(i18n.NavigationDocsTextsItem),
+				MetaDescription: T(i18n.NavigationDocumentation) + ": " + T(i18n.TextItemMetaDescription),
 				Lang:            langTag,
 				Breadcrumbs:     breadcrumbs,
 			},
 			Schema: attachment{
-				Path:        home.JoinPath(string(SchemaTextsItem)),
+				Path:        texts.ItemSchemaPath,
 				Filename:    "Schema",
 				FileSizeFmt: i18n.FormatBytesLocale(int64(filesizeSchema), langTag),
 				Type:        mediatypes.SchemaJSON,
 			},
 			Spec: attachment{
-				Path:        home.JoinPath(string(SpecsTextsItem)),
+				Path:        texts.ItemSpecPath,
 				Filename:    "Spec",
 				FileSizeFmt: i18n.FormatBytesLocale(int64(filesizeSpec), langTag),
 				Type:        mediatypes.OpenAPIJSON,
 			},
 		}
 
-		links[TextsCollection][langTag] = append(breadcrumbs, weblinking.New(weblinking.Self, docsPath().JoinPath("texts", "collection")))
+		links[texts.CollectionDocPath][langTag] = append(breadcrumbs, weblinking.New(weblinking.Self, texts.CollectionDocPath))
 
-		filesizeSpec, ok = h.cache[SpecsTextsCollection].GetSize(mediatypes.OpenAPIJSON, langTag)
+		filesizeSpec, ok = h.cache[texts.CollectionSpecPath].GetSize(mediatypes.OpenAPIJSON, langTag)
 		if !ok {
 			return fmt.Errorf("filesize schema textcollection not found")
 		}
 
-		data[TextsCollection][langTag] = struct {
+		data[texts.CollectionDocPath][langTag] = struct {
 			Base   ui.BaseDataHTML
 			Schema attachment
 			Spec   attachment
 		}{
 			Base: ui.BaseDataHTML{
-				Title:           T(i18n.DocsTitlePrefix) + ": " + T(i18n.NavigationDocsTextsCollection),
-				MetaDescription: T(i18n.DocsTitlePrefix) + ": " + T(i18n.TextCollectionMetaDescription),
+				Title:           T(i18n.NavigationDocumentation) + ": " + T(i18n.NavigationDocsTextsCollection),
+				MetaDescription: T(i18n.NavigationDocumentation) + ": " + T(i18n.TextCollectionMetaDescription),
 				Lang:            langTag,
 				Breadcrumbs:     breadcrumbs,
 			},
 			Spec: attachment{
-				Path:        home.JoinPath(string(SpecsTextsCollection)),
+				Path:        texts.CollectionSpecPath,
 				Filename:    "Spec",
 				FileSizeFmt: i18n.FormatBytesLocale(int64(filesizeSpec), langTag),
 				Type:        mediatypes.OpenAPIJSON,
@@ -145,22 +135,21 @@ func (h *docsHandler) initTexts(baseTemplates *ui.BaseTemplates) (err error) {
 
 	}
 	for path, date := range data {
-		h.cache[path], err = transport.New(
-			path.url(),
-			map[language.Tag]weblinking.Link{
-				language.English: weblinking.New(weblinking.Up, home.Path()),
-				language.German:  weblinking.New(weblinking.Up, home.Path()),
-			},
-			links[path],
-		).With(mediatypes.HTML, baseTemplates, templatesHTML[path], date)
-		if err != nil {
-			return
+		if content, err := baseTemplates.Prebake(mediatypes.HTML, templatesHTML[path], date); err != nil {
+			return err
+		} else {
+			h.cache[path] = transport.NewCache(
+				path,
+				map[language.Tag]weblinking.Link{
+					language.English: weblinking.New(weblinking.Up, weblinking.DocsPath),
+					language.German:  weblinking.New(weblinking.Up, weblinking.DocsPath),
+				},
+				links[path],
+			).With(mediatypes.HTML, content)
 		}
 	}
 
-	h.cache[TextsIndex], err = h.cache[TextsIndex].WithLinkset(links[TextsIndex],
-		supportedTypesCollection...,
-	)
+	h.cache[TextsIndexPath], err = h.cache[TextsIndexPath].WithLinkset(links[TextsIndexPath])
 
 	return
 }

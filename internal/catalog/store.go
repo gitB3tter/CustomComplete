@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"customcomplete/internal/constraints"
 	"customcomplete/internal/errs"
 	"customcomplete/internal/store"
 	"database/sql"
@@ -16,7 +17,7 @@ type textStore struct {
 
 //note: used sqlite driver seems to not (properly) implement func (sql.Result) RowsAffected() (int64, error), therefore RETURNING workaround
 
-func (s *textStore) create(name DocumentName, filename DocumentFilename, hash SourceContentHash, filesize int64, contents []byte) (docID DocumentID, sourceID sourceID, srcStatus SourceStatus, wordcount int64, err error) {
+func (s *textStore) create(name constraints.Label, filename constraints.SafeFilename, hash constraints.Sha256Hex, filesize int64, contents []byte) (docID DocumentID, sourceID sourceID, srcStatus SourceStatus, wordcount int64, err error) {
 	var tx *sql.Tx
 
 	tx, err = s.readWrite.Begin()
@@ -59,8 +60,8 @@ func (s *textStore) create(name DocumentName, filename DocumentFilename, hash So
 }
 
 type docPatchQuery struct {
-	query string
-	args  []any
+	queryPatch string
+	args       []any
 }
 
 func newDocPatchQuery(docID DocumentID, patch DocumentPatchMetadata, newSourceID *sourceID) (patchQuery *docPatchQuery) {
@@ -82,13 +83,17 @@ func newDocPatchQuery(docID DocumentID, patch DocumentPatchMetadata, newSourceID
 		return nil
 	}
 	patchQuery.args = append(patchQuery.args, docID)
-	patchQuery.query = fmt.Sprintf(`UPDATE
-	document d
-	SET %s
-	FROM source s
-	WHERE d.id = ?
-	AND d.source_id = s.id
-	RETURNING d.name, d.filename, s.size, COALESCE(s.wordcount, 0), s.status, s.hash`, strings.Join(set, ", "))
+	patchQuery.queryPatch = fmt.Sprintf(`UPDATE document
+SET %s
+WHERE id = ?
+RETURNING
+name,
+filename,
+(SELECT size FROM source WHERE id = source_id),
+(SELECT COALESCE(wordcount, 0) FROM source WHERE id = source_id),
+(SELECT status FROM source WHERE id = source_id),
+(SELECT hash FROM source WHERE id = source_id)`,
+		strings.Join(set, ", "))
 	return
 }
 
@@ -97,10 +102,10 @@ type QueryRow interface {
 }
 
 func (query docPatchQuery) queryOn(qr QueryRow) (doc Document, err error) {
-	err = qr.QueryRow(query.query, query.args...).Scan(&doc.Name, &doc.Filename, &doc.Filesize, &doc.WordCount, &doc.Status, &doc.Hash)
+	err = qr.QueryRow(query.queryPatch, query.args...).Scan(&doc.Name, &doc.Filename, &doc.Filesize, &doc.WordCount, &doc.Status, &doc.Hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return doc, errs.NotFound()
+			return doc, new(errs.NotFound())
 		}
 		return doc, fmt.Errorf("patch document metadata: %w", err)
 	}
@@ -108,7 +113,7 @@ func (query docPatchQuery) queryOn(qr QueryRow) (doc Document, err error) {
 
 }
 
-func (s textStore) updateDocument(docID DocumentID, patchMeta DocumentPatchMetadata, contents SourceContents, hash SourceContentHash) (doc Document, srcID sourceID, err error) {
+func (s textStore) updateDocument(docID DocumentID, patchMeta DocumentPatchMetadata, contents SourceContents, hash constraints.Sha256Hex) (doc Document, srcID sourceID, err error) {
 	fail := func(err error) (Document, sourceID, error) {
 		return doc, srcID, err
 	}
@@ -127,10 +132,10 @@ func (s textStore) updateDocument(docID DocumentID, patchMeta DocumentPatchMetad
 INSERT INTO source(size, hash, content)
 VALUES(?, ?, ?)
 ON CONFLICT(hash) DO UPDATE SET hash = excluded.hash
-RETURNING id, size, wordcount, status;
+RETURNING id, size, COALESCE(wordcount, 0), status;
 	`, len(contents), hash, contents).Scan(&srcID, &size, &wordcount, &status); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fail(errs.NotFound())
+			return fail(new(errs.NotFound()))
 		}
 		return fail(fmt.Errorf("update source: %w", err))
 	}
@@ -167,7 +172,7 @@ FROM document d
 INNER JOIN source src ON src.id=d.source_id
 WHERE d.id=?`, docID).Scan(&doc.Name, &doc.Filename, &doc.Filesize, &doc.WordCount, &doc.Status, &doc.Hash); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Document{}, errs.NotFound()
+			return Document{}, new(errs.NotFound())
 		}
 		return Document{}, err
 	}
@@ -214,12 +219,12 @@ WHERE id = ?
 RETURNING name`, docID).Scan(&rawName)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return errs.NotFound()
+			return new(errs.NotFound())
 		}
 		return fmt.Errorf("failed deleting document %d: %w", docID, err)
 	}
 	if rawName == "" {
-		return errs.NotFound()
+		return new(errs.NotFound())
 	}
 
 	return nil
@@ -234,7 +239,7 @@ FROM document d
 INNER JOIN source s ON d.source_id=s.id
 WHERE d.id = ?`, docID).Scan(&sourceId); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, errs.NotFound()
+			return 0, new(errs.NotFound())
 		}
 		return 0, err
 	}
@@ -247,7 +252,7 @@ func (s *textStore) getContents(docID DocumentID) (content SourceContents, err e
 	JOIN document d on d.source_id=s.id
 	WHERE d.id=?`, docID).Scan(&content); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errs.NotFound()
+			return nil, new(errs.NotFound())
 		}
 		return nil, err
 	}

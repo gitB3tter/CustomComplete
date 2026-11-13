@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"context"
 	"customcomplete/internal/httpsyntax"
 	"net/http"
 	"strings"
@@ -21,8 +20,8 @@ const (
 	HandlingStrict       Preference = "handling=strict"
 )
 
-func ParsePreferHeader(headerVal string) Preferences {
-	segments := httpsyntax.SplitList(headerVal, ',')
+func ParsePreferences(h http.Header) Preferences {
+	segments := httpsyntax.SplitList(strings.Join(h.Values("Prefer"), ","), ',')
 	var preferences Preferences
 	for _, segment := range segments {
 		if prefer, ok := parsePreferSegment(segment); ok {
@@ -62,19 +61,8 @@ func parsePreferSegment(segment string) (Preference, bool) {
 	return "", false
 }
 
-func WithPreferences(r *http.Request, preferences Preferences) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), PreferenceKey, preferences))
-}
-
-func GetPreferences(ctx context.Context) (Preferences, bool) {
-	preferences, ok := ctx.Value(PreferenceKey).(Preferences)
-	return preferences, ok
-}
-
-func ApplyPreferences(h http.Header, preferences ...Preference) {
-	for _, preference := range preferences {
-		h.Add("Preference-Applied", string(preference))
-	}
+func ApplyPreference(h http.Header, preference Preference) {
+	addHeaderValueOnce(h, "Preference-Applied", string(preference))
 }
 
 func ClearPreferences(h http.Header) {

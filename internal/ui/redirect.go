@@ -2,8 +2,8 @@ package ui
 
 import (
 	"customcomplete/internal/i18n"
+	"customcomplete/internal/weblinking"
 	"html/template"
-	"net/url"
 
 	"golang.org/x/text/language"
 )
@@ -15,11 +15,11 @@ var (
 type redirectPageData struct {
 	Base          BaseDataHTML
 	Message       string
-	Location      *url.URL
+	Location      weblinking.Path
 	LocationLabel string
 }
 
-func SeeOtherHTML(lang language.Tag, message string, location *url.URL) ([]byte, error) {
+func SeeOtherHTML(lang language.Tag, message string, location weblinking.Path) ([]byte, error) {
 	T := i18n.Func(lang)
 	return BufferHTML(templateRedirect[lang], redirectPageData{
 		Base: BaseDataHTML{

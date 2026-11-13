@@ -131,7 +131,7 @@ func main() {
 
 	//suggestions
 	// /suggest
-	suggestHandler, err := suggestions.NewHandler(read, baseTemplates, textservice)
+	suggestHandler, err := suggestions.NewHandler(read, baseTemplates)
 	if err != nil {
 		log.Fatal(err)
 	}

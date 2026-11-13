@@ -5,7 +5,7 @@
     Back
 </a>
 <main>
-    {{template "partials_error-summary-start" .EditFormData.HasErrors}}
+    {{template "partials_error-summary-start" not .EditFormData.HasErrors}}
     {{with .Errors}}
     {{template "texts_errors" .}}
     {{end}}
@@ -72,7 +72,7 @@
                 </fieldset>
             </conditional-reveal>
             <div class="action-bar">
-                {{if .PreconditionFailed}}
+                {{if .ErrorPrecondition}}
                 {{template "texts_edit_form_precondition-submit"}}
                 {{else}}
                 <button type="submit">

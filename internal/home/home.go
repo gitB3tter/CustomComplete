@@ -8,15 +8,13 @@ import (
 	"customcomplete/internal/weblinking"
 	_ "embed"
 	"net/http"
-	"net/url"
 
 	"golang.org/x/text/language"
 )
 
 var (
 	//go:embed home.html
-	tmpl                string
-	supportedMediaTypes = mediatypes.Types{mediatypes.HTML, mediatypes.Linkset, mediatypes.LinksetJSON}
+	tmpl string
 )
 
 type homehandler struct {
@@ -31,7 +29,7 @@ func NewHandler(baseTemplates *ui.BaseTemplates) (*homehandler, error) {
 
 	handler := &homehandler{}
 
-	home := Path()
+	home := weblinking.RootPath
 
 	links := make(map[language.Tag]weblinking.Links)
 	escape := make(map[language.Tag]weblinking.Link)
@@ -39,11 +37,11 @@ func NewHandler(baseTemplates *ui.BaseTemplates) (*homehandler, error) {
 	for _, lang := range i18n.SupportedLanguages {
 		T := i18n.Func(lang)
 
-		texts := weblinking.New(weblinking.Item, home.JoinPath("texts")).WithTitle(T(i18n.NavigationTextCollection))
-		suggestions := weblinking.New(weblinking.Item, home.JoinPath("suggestions")).WithTitle(T(i18n.NavigationSuggestions))
-		docs := weblinking.New(weblinking.Item, home.JoinPath("docs")).WithTitle(T(i18n.NavigationDocumentation))
-		serviceDoc := weblinking.New(weblinking.ServiceDoc, home.JoinPath("docs")).WithTitle(T(i18n.NavigationDocumentation))
-		serviceDesc := weblinking.New(weblinking.ServiceDesc, home.JoinPath("docs", "specs")).WithTitle(T(i18n.NavigationDocumentation))
+		texts := weblinking.New(weblinking.Item, home.Join("texts")).WithTitle(T(i18n.NavigationTextCollection))
+		suggestions := weblinking.New(weblinking.Item, home.Join("suggestions")).WithTitle(T(i18n.NavigationSuggestions))
+		docs := weblinking.New(weblinking.Item, home.Join("docs")).WithTitle(T(i18n.NavigationDocumentation))
+		serviceDoc := weblinking.New(weblinking.ServiceDoc, home.Join("docs")).WithTitle(T(i18n.NavigationDocumentation))
+		serviceDesc := weblinking.New(weblinking.ServiceDesc, home.Join("docs", "specs")).WithTitle(T(i18n.NavigationDocumentation))
 
 		escape[lang] = weblinking.New(weblinking.Up, home)
 
@@ -70,19 +68,19 @@ func NewHandler(baseTemplates *ui.BaseTemplates) (*homehandler, error) {
 			},
 		}
 	}
+
 	var err error
+	var content ui.Prebaked
 
-	handler.cache = transport.New(Path(), escape, links)
+	if content, err = baseTemplates.Prebake(mediatypes.HTML, []string{tmpl}, data); err != nil {
+		return nil, err
+	} else {
+		handler.cache = transport.NewCache(weblinking.RootPath, escape, links).With(mediatypes.HTML, content)
+	}
 
-	handler.cache, err = handler.cache.With(mediatypes.HTML, baseTemplates, []string{tmpl}, data)
-	if err != nil {
+	if handler.cache, err = handler.cache.WithLinkset(links); err != nil {
 		return nil, err
 	}
-	handler.cache, err = handler.cache.WithLinkset(links, supportedMediaTypes...)
 
 	return handler, nil
-}
-
-func Path() *url.URL {
-	return (&url.URL{}).JoinPath("/")
 }
