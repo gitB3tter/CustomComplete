@@ -6,7 +6,6 @@ import (
 	"customcomplete/internal/mediatypes"
 	"customcomplete/internal/transport"
 	"customcomplete/internal/weblinking"
-	"errors"
 	"net/http"
 )
 
@@ -44,8 +43,7 @@ func (h *handler) file(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var contents catalog.SourceContents
 	if contents, err = h.service.GetSourceContents(docID); err != nil {
-		var errWithCode *errs.CodedError
-		if errors.As(err, &errWithCode) && errWithCode.Code() == errs.CodeNotFound {
+		if errs.HasCode(err, errs.CodeNotFound) {
 			respondNotFound(w, r)
 		} else {
 			respondInternalError(w, r, err)

@@ -7,6 +7,43 @@ import (
 	"strings"
 )
 
+type param string
+type Params map[param]any
+
+type Code string
+
+type Codes []Code
+
+func (codes Codes) toAny() (out []any) {
+	out = make([]any, 0, len(codes))
+	for _, code := range codes {
+		out = append(out, code)
+	}
+	return
+}
+
+func (p Params) String() string {
+	keys := make([]param, 0, len(p))
+	for k := range p {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+
+	var b strings.Builder
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		switch v := p[k].(type) {
+		case string:
+			fmt.Fprintf(&b, "%s=%q", k, v)
+		default:
+			fmt.Fprintf(&b, "%s=%v", k, v)
+		}
+	}
+	return b.String()
+}
+
 const (
 	//codes
 	//field-level (json-schema/openapi-inspired/adjacent)
@@ -31,75 +68,47 @@ const (
 	CodeNotFound Code = "notFound"
 
 	//params
-	ParamLimit     param = "limit"
-	ParamExpected  param = "expected"
-	ParamActual    param = "actual"
-	ParamPattern   param = "pattern"
-	ParamCanonical param = "canonical"
-	ParamRule      param = "rule"
-	ParamEncoding  param = "encoding"
+	Limit        param = "limit"
+	Expected     param = "expected"
+	Actual       param = "actual"
+	ParamPattern param = "pattern"
+	Canonical    param = "canonical"
+	Rule         param = "rule"
+	Encoding     param = "encoding"
 
 	//rules
-	RuleNotBlank = "notBlank"
+	NotBlank = "notBlank"
 )
 
-type Code string
-
-type Codes []Code
-
-func (codes Codes) toAny() (out []any) {
-	out = make([]any, 0, len(codes))
-	for _, code := range codes {
-		out = append(out, code)
-	}
-	return
-}
-
-type param string
-type Params map[param]any
-
-func (p Params) String() string {
-	keys := make([]param, 0, len(p))
-	for k := range p {
-		keys = append(keys, k)
-	}
-	slices.Sort(keys)
-
-	var b strings.Builder
-	for i, k := range keys {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		b.WriteString(string(k))
-		if p[k] != "" {
-			fmt.Fprintf(&b, "=%v", p[k])
-		}
-	}
-	return b.String()
-}
-
 // type of error
-type CodedError struct {
+type Coded struct {
 	c Code
 	p Params
 }
 
-func (e *CodedError) Error() string {
-	if len(e.p) > 0 {
-		return string(e.c) + "{" + e.p.String() + "}"
+func (errCoded *Coded) Error() string {
+	if len(errCoded.p) > 0 {
+		return string(errCoded.c) + "{" + errCoded.p.String() + "}"
 	}
-	return string(e.c)
+	return string(errCoded.c)
+}
+
+func (errCoded *Coded) Code() Code {
+	return errCoded.c
+}
+
+func (errCoded *Coded) Params() Params {
+	return errCoded.p
+}
+
+func ParamOr[T any](errCoded Coded, key param, fallback T) T {
+	if val, ok := errCoded.p[key].(T); ok {
+		return val
+	}
+	return fallback
 }
 
 func HasCode(err error, code Code) bool {
-	coded, ok := errors.AsType[*CodedError](err)
+	coded, ok := errors.AsType[*Coded](err)
 	return ok && coded.Code() == code
-}
-
-func (e *CodedError) Code() Code {
-	return e.c
-}
-
-func (e *CodedError) Params() Params {
-	return e.p
 }

@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"customcomplete/internal/errs"
 	"encoding/hex"
-	"errors"
 	"regexp"
 	"strings"
 	"unicode"
@@ -30,8 +29,8 @@ type SafeFilename NotBlank
 
 const (
 	ShortStringMaxCodePoints        = 100
-	safeFileNameMinCodePoints       = 5
-	safeFileNameMaxBytes            = 50
+	SafeFileNameMinCodePoints       = 5
+	SafeFileNameMaxBytes            = 50
 	safeFileNameFallback            = "untitled"
 	SafeFilenamePattern             = `^[a-z0-9]+(-[a-z0-9]+)*$`
 	MaxFileSizeMB             int64 = 10
@@ -45,21 +44,21 @@ func codePoints(s string) int {
 	return utf8.RuneCountInString(s)
 }
 
-func ParseNonEmptyString(s string) (NonEmptyString, *errs.CodedError) {
+func ParseNonEmptyString(s string) (NonEmptyString, error) {
 	if s == "" {
 		return "", new(errs.Required())
 	}
 	return NonEmptyString(s), nil
 }
 
-func ParseNonBlankString(s string) (NotBlank, *errs.CodedError) {
+func ParseNonBlankString(s string) (NotBlank, error) {
 	if strings.TrimSpace(s) == "" {
 		return "", new(errs.Blank())
 	}
 	return NotBlank(s), nil
 }
 
-func ParseLabel(s string) (Label, *errs.CodedError) {
+func ParseLabel(s string) (Label, error) {
 	nonemptyStr, err := ParseNonBlankString(s)
 	if err != nil {
 		return "", err
@@ -71,10 +70,10 @@ func ParseLabel(s string) (Label, *errs.CodedError) {
 	return Label(nonemptyStr), nil
 }
 
-func ParseSafeFilename(str string) (SafeFilename, *errs.CodedError) {
+func ParseSafeFilename(str string) (SafeFilename, error) {
 	safeFileName, err := parseSafeFilename(str)
 	if err != nil {
-		if coded, ok := errors.AsType[*errs.CodedError](err); ok && coded.Code() == errs.CodePattern {
+		if errs.HasCode(err, errs.CodePattern) {
 			if canonical, err := parseSafeFilename(canonicalise(str)); err == nil {
 				return "", new(errs.PatternWithCanonical(SafeFilenamePattern, string(canonical)))
 			}
@@ -84,18 +83,18 @@ func ParseSafeFilename(str string) (SafeFilename, *errs.CodedError) {
 	return safeFileName, nil
 }
 
-func parseSafeFilename(str string) (SafeFilename, *errs.CodedError) {
+func parseSafeFilename(str string) (SafeFilename, error) {
 
-	if n := codePoints(str); n < safeFileNameMinCodePoints {
-		return "", new(errs.MinCodePoints(safeFileNameMinCodePoints, n))
+	if n := codePoints(str); n < SafeFileNameMinCodePoints {
+		return "", new(errs.MinCodePoints(SafeFileNameMinCodePoints, n))
 	}
 
 	if !utf8.ValidString(str) {
 		return "", new(errs.InvalidUTF8())
 	}
 
-	if len(str) > safeFileNameMaxBytes {
-		return "", new(errs.MaxBytes(safeFileNameMaxBytes))
+	if len(str) > SafeFileNameMaxBytes {
+		return "", new(errs.MaxBytes(SafeFileNameMaxBytes))
 	}
 
 	if !SafeFilenameRegex.MatchString(str) {
@@ -130,7 +129,7 @@ func CanonicalSafeFilename(s string) (SafeFilename, error) {
 func DeriveSafeFilename(candidates ...string) SafeFilename {
 
 	for _, candidate := range candidates {
-		if filename, err := CanonicalSafeFilename(FirstBytes(candidate, safeFileNameMaxBytes)); err == nil {
+		if filename, err := CanonicalSafeFilename(FirstBytes(candidate, SafeFileNameMaxBytes)); err == nil {
 			return filename
 		}
 	}
@@ -218,7 +217,7 @@ func collapseSpace(b []byte) []byte {
 
 type FileContents []byte
 
-func ParseFileContents(contents []byte) (FileContents, *errs.CodedError) {
+func ParseFileContents(contents []byte) (FileContents, error) {
 	if len(contents) > int(MaxFileSize) {
 		return nil, new(errs.MaxBytes(MaxFileSize))
 	}

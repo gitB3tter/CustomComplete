@@ -16,7 +16,7 @@ func (NotBlank) Schema() schema.Schema {
 		MinCodepoints: 1,
 		Pattern:       `\S`,
 		XConstraints: schema.Constraints{
-			Rules: []string{errs.RuleNotBlank},
+			Rules: []string{errs.NotBlank},
 		},
 	}
 }
@@ -29,8 +29,8 @@ func (Label) Schema() schema.Schema {
 
 func (SafeFilename) Schema() schema.Schema {
 	s := NotBlank("").Schema()
-	s.MinCodepoints = safeFileNameMinCodePoints
-	s.MaxCodepoints = safeFileNameMaxBytes
+	s.MinCodepoints = SafeFileNameMinCodePoints
+	s.MaxCodepoints = SafeFileNameMaxBytes
 	s.Pattern = SafeFilenamePattern
 	return s
 }

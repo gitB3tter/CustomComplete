@@ -59,7 +59,7 @@ func (i itemData) schema(langTag language.Tag) schema.Root {
 					T(i18n.TextFieldName),
 					T(i18n.TextFieldNameHint, catalog.DocumentNameMaxCodePoints),
 				),
-			"filename": i.FileName.Schema(),
+			filenameField: i.FileName.Schema(),
 			"filesize": schema.From(i.FileSize).
 				WithMaximum(filecontentsSchema.XConstraints.MaxBytes).
 				WithMinimum(filecontentsSchema.XConstraints.MinBytes).
@@ -158,6 +158,7 @@ func (h *handler) respondItemPreconditionHTML(w http.ResponseWriter, r *http.Req
 	output, err = h.bufferItemHTML(w, r, doc, docID, etagStrong, langTag, errPrecondition)
 	if err != nil {
 		respondInternalError(w, r, err)
+		return
 	}
 
 	transport.SetErrorHeaders(w.Header())

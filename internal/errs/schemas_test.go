@@ -44,9 +44,9 @@ func TestFieldErrorSchema(t *testing.T) {
 		}
 	}
 
-	ruleProp, ok := paramsProp.Properties[string(ParamRule)]
+	ruleProp, ok := paramsProp.Properties[string(Rule)]
 	if !ok {
-		t.Fatalf(`params schema does not contain %q property`, ParamRule)
+		t.Fatalf(`params schema does not contain %q property`, Rule)
 	}
 	for _, r := range allRules {
 		if !slices.Contains(ruleProp.Enum, any(r)) {

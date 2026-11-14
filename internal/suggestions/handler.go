@@ -125,8 +125,8 @@ func (h *handler) suggest(w http.ResponseWriter, r *http.Request) {
 		var docName constraints.Label
 		ETag, docID, docName, err = h.getETagDoc(clientData.FilterTextID, langTag, responsetype)
 		if err != nil {
-			if invalidParam, ok := errors.AsType[*errs.FieldError](err); ok {
-				h.respondErrorTextID(w, r, invalidParam, clientData, title)
+			if errField, ok := errors.AsType[*errs.Field](err); ok {
+				h.respondErrorTextID(w, r, errField, clientData, title)
 				return
 			}
 			h.respondInternalErrorQuery(w, r, err, clientData, baseText, title)
@@ -226,7 +226,7 @@ func (h *handler) suggest(w http.ResponseWriter, r *http.Request) {
 	transport.Write(r.Context(), w, output, responsetype, http.StatusOK)
 }
 
-func (h *handler) respondErrorTextID(w http.ResponseWriter, r *http.Request, invalidParam *errs.FieldError, uData clientData, title string) {
+func (h *handler) respondErrorTextID(w http.ResponseWriter, r *http.Request, errField *errs.Field, uData clientData, title string) {
 	langTag := i18n.LangTagFromContext(r.Context())
 	T := i18n.Func(langTag)
 
@@ -244,10 +244,10 @@ func (h *handler) respondErrorTextID(w http.ResponseWriter, r *http.Request, inv
 	var err error
 	switch responsetype {
 	case mediatypes.HTML:
-		reason := T(i18n.SuggestionsFilterTextError) + invalidParam.Reason
+		reason := T(i18n.SuggestionsFilterTextError) + errField.Reason
 		output, err = h.bufferHTML(langTag, uData, []string{}, false, reason, backLink, title, false)
 	case mediatypes.JSON, mediatypes.ProblemJSON:
-		output, err = transport.ProblemFieldError(r.Context(), errs.FieldErrors{*invalidParam}, T(i18n.SuggestionsFilterTextError))
+		output, err = transport.ProblemFieldError(r.Context(), errs.Fields{*errField}, T(i18n.SuggestionsFilterTextError))
 		if err == nil {
 			links = append(
 				links,
@@ -257,7 +257,7 @@ func (h *handler) respondErrorTextID(w http.ResponseWriter, r *http.Request, inv
 			)
 		}
 	case mediatypes.TextPlain:
-		output = []byte(T(i18n.SuggestionsFilterTextError) + ":\n" + invalidParam.Reason)
+		output = []byte(T(i18n.SuggestionsFilterTextError) + ":\n" + errField.Reason)
 	}
 	if err != nil {
 		transport.InternalError(w, r, err, backLink)
@@ -268,7 +268,7 @@ func (h *handler) respondErrorTextID(w http.ResponseWriter, r *http.Request, inv
 	w.Header().Set("Link", links.String())
 	transport.AddVaryOnce(w.Header(), "Accept")
 	status := http.StatusUnprocessableEntity
-	if invalidParam.Code == errs.CodeConflict {
+	if errField.Code == errs.CodeConflict {
 		status = http.StatusConflict
 	}
 	transport.Write(r.Context(), w, output, responsetype, status)
@@ -365,14 +365,14 @@ func (h *handler) getETagDoc(rawID int64, langTag language.Tag, responseType med
 	T := i18n.Func(langTag)
 	id, ok = catalog.ParseDocumentIDFromInt64(rawID)
 	if !ok {
-		return "", nil, "", new(errs.InvalidParamFromCodedError("textID", errs.NotFound(), T(i18n.SuggestionsFilterTextError)+" "+T(i18n.SuggestionsFilterTextNotFound)))
+		return "", nil, "", new(errs.FieldFromCoded("textID", errs.NotFound(), T(i18n.SuggestionsFilterTextError)+" "+T(i18n.SuggestionsFilterTextNotFound)))
 	}
 	docID = &id
 	var state string
 	var status catalog.SourceStatus
 	if err = h.queries.metaDoc.QueryRow(version, docID).Scan(&state, &status, &docName); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", nil, "", new(errs.InvalidParamFromCodedError("textID", errs.NotFound(), T(i18n.SuggestionsFilterTextError)+" "+T(i18n.SuggestionsFilterTextNotFound)))
+			return "", nil, "", new(errs.FieldFromCoded("textID", errs.NotFound(), T(i18n.SuggestionsFilterTextError)+" "+T(i18n.SuggestionsFilterTextNotFound)))
 		}
 		return
 	}
@@ -386,7 +386,7 @@ func (h *handler) getETagDoc(rawID int64, langTag language.Tag, responseType med
 		reason = T(i18n.SuggestionsFilterTextProcessingIncomplete)
 	}
 
-	return "", nil, "", new(errs.InvalidParamFromCodedError("textID", errs.Conflict(catalog.StatusComplete, status), reason))
+	return "", nil, "", new(errs.FieldFromCoded("textID", errs.Conflict(catalog.StatusComplete, status), reason))
 }
 
 func (h *handler) bufferHTML(langTag language.Tag, uData clientData, suggestions []string, hasErrorQuery bool, errMessage string, linkBack weblinking.Link, title string, NoTexts bool) ([]byte, error) {

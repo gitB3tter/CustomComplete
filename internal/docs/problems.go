@@ -44,10 +44,10 @@ func (h *docsHandler) initProblems() (err error) {
 			weblinking.New(weblinking.Self, transport.ProblemGenericPath),
 		}
 		escapes[errs.SchemaPath][langTag] = weblinking.New(weblinking.Up, transport.ProblemErrorsPath).
-			WithTitle(T(i18n.NavigationDocumentation) + ": " + T(i18n.NavigationDocsProblemInvalidParams))
+			WithTitle(T(i18n.NavigationDocumentation) + ": " + T(i18n.NavigationDocsProblemsError))
 		links[errs.SchemaPath][langTag] = weblinking.Links{
 			weblinking.New(weblinking.Up, transport.ProblemErrorsPath).
-				WithTitle(T(i18n.NavigationDocumentation) + ": " + T(i18n.NavigationDocsProblemInvalidParams)),
+				WithTitle(T(i18n.NavigationDocumentation) + ": " + T(i18n.NavigationDocsProblemsError)),
 			weblinking.New(weblinking.Self, errs.SchemaPath),
 		}
 	}
@@ -58,7 +58,7 @@ func (h *docsHandler) initProblems() (err error) {
 		errs.SchemaPath:              make(map[language.Tag][]byte, len(i18n.SupportedLanguages)),
 	}
 	for _, langTag := range i18n.SupportedLanguages {
-		if output[transport.ProblemErrorsPath][langTag], err = json.Marshal(transport.ProblemErrorSchema(langTag)); err != nil {
+		if output[transport.ProblemErrorsPath][langTag], err = json.Marshal(transport.ProblemsErrorsSchema(langTag)); err != nil {
 			return
 		}
 		if output[transport.ProblemGenericPath][langTag], err = json.Marshal(transport.ProblemGenericSchema(langTag)); err != nil {

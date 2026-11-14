@@ -23,12 +23,12 @@ type Problem struct {
 
 type Validation struct {
 	Problem
-	InvalidParams errs.FieldErrors `json:"errors,omitempty"`
+	Errors errs.Fields `json:"errors,omitempty"`
 }
 
 type Conflict struct {
 	Problem
-	InvalidParams errs.FieldErrors `json:"errors,omitempty"`
+	Errors errs.Fields `json:"errors,omitempty"`
 }
 
 var (
@@ -36,7 +36,7 @@ var (
 	ProblemGenericPath weblinking.Path = weblinking.DocsPath.Join("problems", "generic")
 )
 
-func ProblemErrorSchema(langTag language.Tag) schema.Root {
+func ProblemsErrorsSchema(langTag language.Tag) schema.Root {
 	T := i18n.Func(langTag)
 
 	required := map[string]schema.Schema{
@@ -46,7 +46,7 @@ func ProblemErrorSchema(langTag language.Tag) schema.Root {
 			WithDescription(T(i18n.DocsProblemTitleDescription)),
 		"errors": schema.New(schema.Array).
 			WithItemsRef(errs.SchemaPath).
-			WithDescription(T(i18n.DocsProblemInvalidParamsDescription)),
+			WithMeta(T(i18n.DocsProblemsFieldErrorsTitle), T(i18n.DocsProblemsFieldErrorsDescription)),
 	}
 
 	return schema.NewRoot(
@@ -54,7 +54,7 @@ func ProblemErrorSchema(langTag language.Tag) schema.Root {
 		required,
 	).WithOptional(map[string]schema.Schema{
 		"detail": schema.New(schema.String),
-	})
+	}).WithTitle(T(i18n.NavigationDocsProblemsErrors))
 }
 
 func ProblemGenericSchema(langTag language.Tag) schema.Root {
@@ -69,7 +69,7 @@ func ProblemGenericSchema(langTag language.Tag) schema.Root {
 	)
 }
 
-func ProblemFieldError(ctx context.Context, invalidParams errs.FieldErrors, detail string) ([]byte, error) {
+func ProblemFieldError(ctx context.Context, errsField errs.Fields, detail string) ([]byte, error) {
 	T := i18n.TranslateFuncFromContext(ctx)
 	problem := Validation{
 		Problem: Problem{
@@ -77,7 +77,7 @@ func ProblemFieldError(ctx context.Context, invalidParams errs.FieldErrors, deta
 			Title:  T(i18n.CommonErrorSummaryTitle),
 			Detail: detail,
 		},
-		InvalidParams: invalidParams,
+		Errors: errsField,
 	}
 
 	body, err := json.Marshal(problem)

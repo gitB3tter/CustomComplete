@@ -35,25 +35,25 @@ var (
 
 type formFieldErrors map[string]string
 
-func newFormFieldErrors(err error, src source, langTag language.Tag) (FieldErrors formFieldErrors) {
+func newFormFieldErrors(err error, src source, langTag language.Tag) (errsFormField formFieldErrors) {
 
-	FieldErrors = make(formFieldErrors)
+	errsFormField = make(formFieldErrors)
 
-	if err, ok := errors.AsType[*errs.FieldErrors](err); !ok {
+	errsField, ok := errors.AsType[*errs.Fields](err)
+	if !ok {
 		return
-	} else {
-		// if no known source selected => show only error to select a source, dont show errors of (non-visible until checked) text or file
-		sourceSelected := slices.Contains(validSources, src)
+	}
+	// if no known source selected => show only error to select a source, dont show errors of (non-visible until checked) text or file
+	sourceSelected := slices.Contains(validSources, src)
 
-		for _, invalidParam := range *err {
-			//if there are multiple, only put one error
-			if _, ok := FieldErrors[invalidParam.Name]; !ok {
-				if !sourceSelected && slices.Contains(validSources, source(invalidParam.Name)) {
-					FieldErrors[string(sourceField)] = i18n.Func(langTag)(i18n.TextCreateFormUnselected)
-					continue
-				}
-				FieldErrors[invalidParam.Name] = invalidParam.Reason
+	for _, errField := range *errsField {
+		//if there are multiple, only put one error
+		if _, ok := errsFormField[errField.Name]; !ok {
+			if !sourceSelected && slices.Contains(validSources, source(errField.Name)) {
+				errsFormField[sourceField] = i18n.Translate(langTag, i18n.TextCreateFormUnselected)
+				continue
 			}
+			errsFormField[errField.Name] = errField.Reason
 		}
 	}
 	return
@@ -127,7 +127,8 @@ const (
 	//name of field containing text (and value for "source" to choose text(-area content))
 	textField = "text"
 	//name of the field containing a file upload (and value for "source" to choose file(-input upload))
-	fileField = "file"
+	fileField     = "file"
+	filenameField = "filename"
 	//keep the text (edit-form)
 	keep source = "keep"
 	text source = source(textField)
@@ -142,7 +143,6 @@ var (
 	}
 )
 
-// explicit radio (unenhanced HTML) wins; otherwise infer
 func resolveSource(formValue string) source {
 	if slices.Contains(validSources, source(formValue)) {
 		return source(formValue)
@@ -150,14 +150,13 @@ func resolveSource(formValue string) source {
 	return ""
 }
 
-func parseMultipartFormOrRespond(w http.ResponseWriter, r *http.Request, langTag language.Tag, escape weblinking.Link, allowedSources sources) (userData FormUserData, filename string, contents []byte, errSource *errs.CodedError, proceed bool) {
-	T := i18n.Func(langTag)
+func parseMultipartFormOrRespond(w http.ResponseWriter, r *http.Request, langTag language.Tag, escape weblinking.Link, allowedSources sources) (userData FormUserData, filename string, contents []byte, errSource error, proceed bool) {
 	err := r.ParseMultipartForm(maxPayloadSize)
 	if err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			transport.ContentTooLarge(w, r, i18n.FormatBytesLocale(maxPayloadSize, langTag), escape)
 		} else {
-			transport.BadRequest(w, r, T(i18n.HTTPErrorBodyNotParseable), escape)
+			transport.BadRequest(w, r, i18n.Translate(langTag, i18n.HTTPErrorBodyNotParseable), escape)
 		}
 		proceed = false
 		return
@@ -172,7 +171,7 @@ func parseMultipartFormOrRespond(w http.ResponseWriter, r *http.Request, langTag
 	case text:
 		contents = []byte(userData.Text)
 	case "", file:
-		multipartFile, header, err := r.FormFile(string(fileField))
+		multipartFile, header, err := r.FormFile(fileField)
 		if err != nil && !errors.Is(err, http.ErrMissingFile) {
 			transport.InternalError(w, r, err, escape)
 			return FormUserData{}, "", []byte{}, nil, false
@@ -190,7 +189,7 @@ func parseMultipartFormOrRespond(w http.ResponseWriter, r *http.Request, langTag
 				transport.InternalError(w, r, err, escape)
 				return FormUserData{}, "", []byte{}, nil, false
 			}
-			filename = strings.TrimSuffix(header.Filename, ".txt")
+			filename = header.Filename
 
 		} else if userData.Source == "" && len(userData.Text) > 0 {
 			userData.Source = text
@@ -209,8 +208,7 @@ func (h *handler) getDocOrRespond(w http.ResponseWriter, r *http.Request) (docID
 
 	var err error
 	if doc, err = h.service.GetDocument(docID); err != nil {
-		var errWithCode *errs.CodedError
-		if errors.As(err, &errWithCode) && errWithCode.Code() == errs.CodeNotFound {
+		if errs.HasCode(err, errs.CodeNotFound) {
 			respondNotFound(w, r)
 		} else {
 			respondInternalError(w, r, err)
@@ -220,19 +218,35 @@ func (h *handler) getDocOrRespond(w http.ResponseWriter, r *http.Request) (docID
 	return
 }
 
-func mapFilenameError(langTag language.Tag, errCoded errs.CodedError) errs.FieldError {
+func codedOrRespond(w http.ResponseWriter, r *http.Request, err error) (errs.Coded, bool) {
+	errCoded, ok := errors.AsType[*errs.Coded](err)
+	if !ok {
+		respondInternalError(w, r, err)
+	}
+	return *errCoded, ok
+}
+
+func codedOrRespondSubresource(w http.ResponseWriter, r *http.Request, err error, docID catalog.DocumentID, docName constraints.Label) (errs.Coded, bool) {
+	errCoded, ok := errors.AsType[*errs.Coded](err)
+	if !ok {
+		respondInternalErrorSubresource(w, r, err, docID, docName)
+	}
+	return *errCoded, ok
+}
+
+func mapFilenameError(langTag language.Tag, errCoded errs.Coded) errs.Field {
 	T := i18n.Func(langTag)
 	var reason string
 	switch errCoded.Code() {
 	case errs.CodeMinCodePoints:
-		reason = T(i18n.TextFieldFilenameMinCodePoints, errCoded.Params()[errs.ParamLimit])
+		reason = T(i18n.TextFieldFilenameMinCodePoints, errs.ParamOr(errCoded, errs.Limit, constraints.SafeFileNameMinCodePoints))
 	case errs.CodeMaxBytes:
-		reason = T(i18n.TextFieldFilenameMaxBytes, errCoded.Params()[errs.ParamLimit])
+		reason = T(i18n.TextFieldFilenameMaxBytes, errs.ParamOr(errCoded, errs.Limit, constraints.SafeFileNameMaxBytes))
 	case errs.CodePattern:
 		reason = T(i18n.TextFieldFilenamePattern)
 	case errs.CodeInvalid:
 		p := errCoded.Params()
-		if p[errs.ParamEncoding] == "utf-8" {
+		if p[errs.Encoding] == "utf-8" {
 			reason = T(i18n.TextFieldFileInvalidUTF8)
 		} else {
 			reason = T(i18n.CommonErrorUnknown)
@@ -240,10 +254,10 @@ func mapFilenameError(langTag language.Tag, errCoded errs.CodedError) errs.Field
 	default:
 		reason = T(i18n.CommonErrorUnknown)
 	}
-	return errs.InvalidParamFromCodedError("filename", errCoded, reason)
+	return errs.FieldFromCoded(filenameField, errCoded, reason)
 }
 
-func mapNameError(langTag language.Tag, errCoded errs.CodedError) errs.FieldError {
+func mapNameError(langTag language.Tag, errCoded errs.Coded) errs.Field {
 	T := i18n.Func(langTag)
 	var reason string
 	switch errCoded.Code() {
@@ -254,53 +268,47 @@ func mapNameError(langTag language.Tag, errCoded errs.CodedError) errs.FieldErro
 	default:
 		reason = T(i18n.CommonErrorUnknown)
 	}
-	return errs.InvalidParamFromCodedError(string(nameField), errCoded, reason)
+	return errs.FieldFromCoded(nameField, errCoded, reason)
 }
 
-func mapTextError(langTag language.Tag, errCoded errs.CodedError) errs.FieldError {
+func mapSourceContentsError(langTag language.Tag, allowed sources, actual source, errCoded errs.Coded) errs.Field {
+	switch actual {
+	case file:
+		return mapFileError(langTag, errCoded)
+	case text:
+		return mapContentsError(langTag, errCoded, i18n.TextFieldTextMissing, i18n.TextFieldTextMinWords, i18n.TextFieldTextMaxBytes, i18n.TextFieldTextInvalidUTF8)
+	default:
+		return errs.FieldFromCoded(sourceField, errs.Enum(allowed.toAny(), actual), i18n.Translate(langTag, i18n.TextCreateFormUnselected))
+	}
+}
+
+func mapContentsError(langTag language.Tag, errCoded errs.Coded, required, minWords, maxBytes, invalid i18n.Key) errs.Field {
 	T := i18n.Func(langTag)
 	var reason string
 	switch errCoded.Code() {
 	case errs.CodeRequired:
-		reason = T(i18n.TextFieldTextMissing)
+		reason = T(required)
 	case errs.CodeMinWords:
-		reason = T(i18n.TextFieldTextMinWords, errCoded.Params()[errs.ParamLimit])
+		reason = T(minWords, errs.ParamOr(errCoded, errs.Limit, catalog.MinWordsContents))
 	case errs.CodeMaxBytes:
-		var limitMB int64
-		if val, ok := errCoded.Params()[errs.ParamLimit].(int64); ok {
-			limitMB = val / 1_000_000
-		} else {
-			limitMB = constraints.MaxFileSizeMB
-		}
-		reason = T(i18n.TextFieldTextMaxBytes, limitMB)
+		reason = T(
+			maxBytes,
+			errs.ParamOr(errCoded, errs.Limit, constraints.MaxFileSize)/1_000_000,
+		)
 	case errs.CodeInvalid:
-		reason = T(i18n.TextFieldTextInvalidUTF8)
+		if errCoded.Params()[errs.Encoding] == "utf-8" {
+			reason = T(invalid)
+		} else {
+			reason = T(i18n.CommonErrorUnknown)
+		}
 	default:
 		reason = T(i18n.CommonErrorUnknown)
 	}
-	return errs.InvalidParamFromCodedError(textField, errCoded, reason)
+	return errs.FieldFromCoded(textField, errCoded, reason)
 }
 
-func mapFileError(langTag language.Tag, errCoded errs.CodedError) errs.FieldError {
-	T := i18n.Func(langTag)
-	reason := T(i18n.CommonErrorUnknown)
-	switch errCoded.Code() {
-	case errs.CodeRequired:
-		reason = T(i18n.TextFieldFileMissing)
-	case errs.CodeMinWords:
-		reason = T(i18n.TextFieldFileMinWords, errCoded.Params()[errs.ParamLimit])
-	case errs.CodeMaxBytes:
-		var limitMB int64
-		if val, ok := errCoded.Params()[errs.ParamLimit].(int64); ok {
-			limitMB = val / 1_000_000
-		} else {
-			limitMB = constraints.MaxFileSizeMB
-		}
-		reason = T(i18n.TextFieldFileMaxBytes, limitMB)
-	case errs.CodeInvalid:
-		reason = T(i18n.TextFieldFileInvalidUTF8)
-	}
-	return errs.InvalidParamFromCodedError(fileField, errCoded, reason)
+func mapFileError(langTag language.Tag, errCoded errs.Coded) errs.Field {
+	return mapContentsError(langTag, errCoded, i18n.TextFieldFileMissing, i18n.TextFieldFileMinWords, i18n.TextFieldFileMaxBytes, i18n.TextFieldFileInvalidUTF8)
 }
 
 func deriveFilename(docName constraints.Label, fileheaderName string, contents []byte) constraints.SafeFilename {

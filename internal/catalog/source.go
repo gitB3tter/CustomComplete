@@ -21,7 +21,7 @@ const (
 
 type SourceContents constraints.FileContents
 
-func ParseSourceContents(contents []byte) (SourceContents, *errs.CodedError) {
+func ParseSourceContents(contents []byte) (SourceContents, error) {
 
 	fileContents, err := constraints.ParseFileContents(contents)
 	if err != nil {

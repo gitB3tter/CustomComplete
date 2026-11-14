@@ -3,116 +3,116 @@ package errs
 import "customcomplete/internal/schema"
 
 var (
-	errNotFound             = CodedError{c: CodeNotFound}
-	errRequired             = CodedError{c: CodeRequired}
-	errReadOnly             = CodedError{c: CodeReadOnly}
-	errAdditionalProperties = CodedError{c: CodeAdditionalProperties} // etc.
+	errNotFound             = Coded{c: CodeNotFound}
+	errRequired             = Coded{c: CodeRequired}
+	errReadOnly             = Coded{c: CodeReadOnly}
+	errAdditionalProperties = Coded{c: CodeAdditionalProperties}
 )
 
-func NotFound() CodedError {
+func NotFound() Coded {
 	return errNotFound
 }
-func Required() CodedError {
+func Required() Coded {
 	return errRequired
 }
 
-func ReadOnly() CodedError {
+func ReadOnly() Coded {
 	return errReadOnly
 }
 
-func AdditionalProperties() CodedError {
+func AdditionalProperties() Coded {
 	return errAdditionalProperties
 }
 
-func Blank() CodedError {
-	return CodedError{
+func Blank() Coded {
+	return Coded{
 		c: CodeRequired,
-		p: Params{ParamRule: RuleNotBlank},
+		p: Params{Rule: NotBlank},
 	}
 }
 
-func MaxBytes(limit int64) CodedError {
-	return CodedError{
+func MaxBytes(limit int64) Coded {
+	return Coded{
 		c: CodeMaxBytes,
-		p: Params{ParamLimit: limit},
+		p: Params{Limit: limit},
 	}
 }
 
-func MinCodePoints(limit int, actual int) CodedError {
-	return CodedError{
+func MinCodePoints(limit int, actual int) Coded {
+	return Coded{
 		c: CodeMinCodePoints,
-		p: Params{ParamLimit: limit, ParamActual: actual},
+		p: Params{Limit: limit, Actual: actual},
 	}
 }
 
-func MaxCodePoints(limit int, actual int) CodedError {
-	return CodedError{
+func MaxCodePoints(limit int, actual int) Coded {
+	return Coded{
 		c: CodeMaxCodePoints,
-		p: Params{ParamLimit: limit, ParamActual: actual},
+		p: Params{Limit: limit, Actual: actual},
 	}
 }
 
-func MinWords(limit int, actual int) CodedError {
-	return CodedError{
+func MinWords(limit int, actual int) Coded {
+	return Coded{
 		c: CodeMinWords,
-		p: Params{ParamLimit: limit, ParamActual: actual},
+		p: Params{Limit: limit, Actual: actual},
 	}
 }
 
-func MaxWords(limit int, actual int) CodedError {
-	return CodedError{
+func MaxWords(limit int, actual int) Coded {
+	return Coded{
 		c: CodeMaxWords,
-		p: Params{ParamLimit: limit, ParamActual: actual},
+		p: Params{Limit: limit, Actual: actual},
 	}
 }
 
-func Pattern(pattern string) CodedError {
-	return CodedError{
+func Pattern(pattern string) Coded {
+	return Coded{
 		c: CodePattern,
 		p: Params{ParamPattern: pattern},
 	}
 }
 
-func PatternWithCanonical(pattern string, canonical string) CodedError {
-	return CodedError{
+func PatternWithCanonical(pattern string, canonical string) Coded {
+	return Coded{
 		c: CodePattern,
-		p: Params{ParamPattern: pattern, ParamCanonical: canonical},
+		p: Params{ParamPattern: pattern, Canonical: canonical},
 	}
 }
 
-func Type(expected, actual schema.Type) CodedError {
-	return CodedError{
+func Type(expected, actual schema.Type) Coded {
+	return Coded{
 		c: CodeType,
-		p: Params{ParamExpected: expected, ParamActual: actual},
+		p: Params{Expected: expected, Actual: actual},
 	}
 }
 
-func Enum(expected []any, actual any) CodedError {
-	return CodedError{
+func Enum(expected []any, actual any) Coded {
+	return Coded{
 		c: CodeEnum,
-		p: Params{ParamExpected: expected, ParamActual: actual},
+		p: Params{Expected: expected, Actual: actual},
 	}
 }
 
-func Invalid(params Params) CodedError {
-	return CodedError{
+func Invalid(params Params) Coded {
+	return Coded{
 		c: CodeInvalid,
 		p: params,
 	}
 }
 
-func InvalidUTF8() CodedError {
-	return CodedError{
+func InvalidUTF8() Coded {
+	return Coded{
 		c: CodeInvalid,
 		p: Params{
-			ParamEncoding: "utf-8",
+			Encoding: "utf-8",
 		},
 	}
 }
 
-func Conflict(expected, actual any) CodedError {
-	return CodedError{
+func Conflict(expected, actual any) Coded {
+	return Coded{
 		c: CodeConflict,
-		p: Params{ParamExpected: expected, ParamActual: actual},
+		p: Params{Expected: expected, Actual: actual},
 	}
 }

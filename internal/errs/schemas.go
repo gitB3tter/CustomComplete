@@ -30,33 +30,33 @@ var (
 	}
 
 	allParams = []param{
-		ParamLimit,
-		ParamExpected,
-		ParamActual,
+		Limit,
+		Expected,
+		Actual,
 		ParamPattern,
-		ParamCanonical,
-		ParamRule,
-		ParamEncoding,
+		Canonical,
+		Rule,
+		Encoding,
 	}
 
-	allRules = []string{RuleNotBlank}
+	allRules = []string{NotBlank}
 )
 
 func Schema(langTag language.Tag) schema.Root {
-	return FieldError{}.Schema(langTag)
+	return Field{}.Schema(langTag)
 }
 
-func (FieldError) Schema(langTag language.Tag) schema.Root {
+func (Field) Schema(langTag language.Tag) schema.Root {
 	T := i18n.Func(langTag)
 
 	required := map[string]schema.Schema{
 		"name": schema.New(schema.String).
-			WithMeta(T(i18n.DocsProblemInvalidParamNameTitle), T(i18n.DocsProblemInvalidParamNameDescription)),
+			WithMeta(T(i18n.DocsProblemsFieldErrorNameTitle), T(i18n.DocsProblemsFieldErrorNameDescription)),
 		"code": schema.New(schema.String).
-			WithMeta(T(i18n.DocsProblemInvalidParamCodeTitle), T(i18n.DocsProblemInvalidParamCodeDescription)).
+			WithMeta(T(i18n.DocsProblemsFieldErrorCodeTitle), T(i18n.DocsProblemsFieldErrorCodeDescription)).
 			WithEnum(allCodes.toAny()...),
 		"reason": schema.New(schema.String).
-			WithMeta(T(i18n.DocsProblemInvalidParamReasonTitle), T(i18n.DocsProblemInvalidParamReasonDescription)),
+			WithMeta(T(i18n.DocsProblemsFieldErrorReasonTitle), T(i18n.DocsProblemsFieldErrorReasonDescription)),
 	}
 
 	optional := map[string]schema.Schema{
@@ -66,7 +66,7 @@ func (FieldError) Schema(langTag language.Tag) schema.Root {
 	return schema.NewRoot(
 		SchemaPath,
 		required,
-	).WithTitle(T(i18n.NavigationDocsProblemInvalidParams)).
+	).WithTitle(T(i18n.NavigationDocsProblemsError)).
 		WithOptional(optional)
 }
 
@@ -75,28 +75,28 @@ func (Params) Schema(langTag language.Tag) schema.Schema {
 
 	return schema.New(schema.Object).
 		WithMeta(
-			T(i18n.DocsProblemInvalidParamParamsTitle),
-			T(i18n.DocsProblemInvalidParamParamsDescription),
+			T(i18n.DocsProblemsFieldErrorParamsTitle),
+			T(i18n.DocsProblemsFieldErrorParamsDescription),
 		).
 		WithProperties(
 			map[string]schema.Schema{
-				string(ParamLimit): schema.
+				string(Limit): schema.
 					New(schema.Integer).
 					WithMinimum(0),
-				string(ParamActual): schema.
+				string(Actual): schema.
 					New(schema.Integer, schema.String).
 					WithMinimum(0),
-				string(ParamExpected): schema.
+				string(Expected): schema.
 					New(schema.String, schema.Array),
 				string(ParamPattern): schema.
 					New(schema.String).
 					WithFormat("regex"),
-				string(ParamCanonical): schema.
+				string(Canonical): schema.
 					New(schema.String),
-				string(ParamRule): schema.
+				string(Rule): schema.
 					New(schema.String).
-					WithEnum(RuleNotBlank),
-				string(ParamEncoding): schema.
+					WithEnum(NotBlank),
+				string(Encoding): schema.
 					New(schema.String).
 					WithEnum("utf-8"),
 			},

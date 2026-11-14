@@ -31,31 +31,37 @@ func (h *handler) create(w http.ResponseWriter, r *http.Request) {
 	langTag := i18n.LangTagFromContext(ctx)
 	T := i18n.Func(langTag)
 
+	var errsField errs.Fields
 	allowedSources := sources{text, file}
 	userData, filename, contents, errSource, proceed := parseMultipartFormOrRespond(w, r, langTag, collectionLink(langTag), allowedSources)
 	if !proceed {
 		return
 	}
-
-	var errCoded *errs.CodedError
-	var errsField errs.FieldErrors
+	var err error
 	var srcContents catalog.SourceContents
 	if errSource != nil {
-		errsField.AddCoded(sourceField, *errSource, T(i18n.TextCreateFormUnselected))
-	} else if srcContents, errCoded = catalog.ParseSourceContents(contents); errCoded != nil {
-		switch userData.Source {
-		case file:
-			errsField = append(errsField, mapFileError(langTag, *errCoded))
-		case text:
-			errsField = append(errsField, mapTextError(langTag, *errCoded))
-		default:
-			errsField.AddCoded(sourceField, errs.Enum(allowedSources.toAny(), userData.Source), T(i18n.TextCreateFormUnselected))
+		errCoded, ok := codedOrRespond(w, r, errSource)
+		if !ok {
+			return
+		}
+		errsField.AddCoded(sourceField, errCoded, T(i18n.TextCreateFormUnselected))
+	} else {
+		if srcContents, err = catalog.ParseSourceContents(contents); err != nil {
+			errCoded, ok := codedOrRespond(w, r, err)
+			if !ok {
+				return
+			}
+			errsField = append(errsField, mapSourceContentsError(langTag, allowedSources, userData.Source, errCoded))
 		}
 	}
 
 	var docName constraints.Label
-	if docName, errCoded = constraints.ParseLabel(userData.Name); errCoded != nil {
-		errsField = append(errsField, mapNameError(langTag, *errCoded))
+	if docName, err = constraints.ParseLabel(userData.Name); err != nil {
+		errCoded, ok := codedOrRespond(w, r, err)
+		if !ok {
+			return
+		}
+		errsField = append(errsField, mapNameError(langTag, errCoded))
 	}
 
 	if len(errsField) > 0 {
@@ -108,10 +114,10 @@ func (h *handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeItem(r.Context(), w, docID, doc, output, http.StatusCreated, langTag, responseType)
+	writeItem(ctx, w, docID, doc, output, http.StatusCreated, langTag, responseType)
 }
 
-func (h *handler) respondCreateErrors(w http.ResponseWriter, r *http.Request, userData FormUserData, invalidParams errs.FieldErrors) {
+func (h *handler) respondCreateErrors(w http.ResponseWriter, r *http.Request, userData FormUserData, errsField errs.Fields) {
 
 	ctx := r.Context()
 	langTag := i18n.LangTagFromContext(ctx)
@@ -122,11 +128,9 @@ func (h *handler) respondCreateErrors(w http.ResponseWriter, r *http.Request, us
 	var err error
 	switch responseType {
 	case mediatypes.HTML:
-		output, err = h.bufferCreateForm(ctx, newFormData(userData, &invalidParams, langTag))
-	case mediatypes.JSON:
-		fallthrough
-	case mediatypes.ProblemJSON:
-		output, err = transport.ProblemFieldError(r.Context(), invalidParams, "")
+		output, err = h.bufferCreateForm(ctx, newFormData(userData, &errsField, langTag))
+	case mediatypes.ProblemJSON, mediatypes.JSON:
+		output, err = transport.ProblemFieldError(ctx, errsField, "")
 		w.Header().Set(
 			"Link",
 			transport.ProblemErrorsPath.
@@ -135,10 +139,10 @@ func (h *handler) respondCreateErrors(w http.ResponseWriter, r *http.Request, us
 				String(),
 		)
 	case mediatypes.TextPlain:
-		output = []byte(T(i18n.CommonErrorSummaryTitle) + "\n" + invalidParams.String())
+		output = []byte(T(i18n.CommonErrorSummaryTitle) + "\n" + errsField.String())
 	}
 	if err != nil {
-		transport.InternalError(w, r, err, collectionLink(langTag))
+		respondInternalError(w, r, err)
 		return
 	}
 
